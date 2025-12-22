@@ -13,9 +13,11 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "omsimapbundler",
-        "width": 800,
-        "height": 600
+        "title": "OMSI Map Bundler",
+        "width": 1200,
+        "height": 800,
+        "resizable": false,
+        "maximizable": false
       }
     ],
     "security": {

@@ -1,43 +1,126 @@
 <!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="/src/styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/src/main.ts" defer></script>
-  </head>
+<html lang="en" data-theme="light">
 
-  <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="/src/styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OMSI Map Bundler</title>
+  <script type="module" src="/src/main.ts" defer></script>
+</head>
 
-      <div class="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/src/assets/vite.svg" class="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img
-            src="/src/assets/tauri.svg"
-            class="logo tauri"
-            alt="Tauri logo"
-          />
-        </a>
-        <a href="https://www.typescriptlang.org/docs" target="_blank">
-          <img
-            src="/src/assets/typescript.svg"
-            class="logo typescript"
-            alt="typescript logo"
-          />
-        </a>
+<body>
+  <div class="app-header">
+    <h1 class="app-title">OMSI Map Bundler</h1>
+    <div class="header-controls">
+      <div class="language-switcher">
+        <button class="lang-btn" data-lang="en" title="English">
+          <svg width="20" height="15" viewBox="0 0 20 15">
+            <rect width="20" height="15" fill="#012169" />
+            <path d="M0,0 L20,15 M20,0 L0,15" stroke="#FFF" stroke-width="3" />
+            <path d="M0,0 L20,15 M20,0 L0,15" stroke="#C8102E" stroke-width="1.5" />
+            <path d="M10,0 V15 M0,7.5 H20" stroke="#FFF" stroke-width="5" />
+            <path d="M10,0 V15 M0,7.5 H20" stroke="#C8102E" stroke-width="3" />
+          </svg>
+        </button>
+        <button class="lang-btn" data-lang="cs" title="Čeština">
+          <svg width="20" height="15" viewBox="0 0 20 15">
+            <rect width="20" height="7.5" fill="#FFF" />
+            <rect y="7.5" width="20" height="7.5" fill="#D7141A" />
+            <path d="M0,0 L10,7.5 L0,15 Z" fill="#11457E" />
+          </svg>
+        </button>
+        <button class="lang-btn" data-lang="de" title="Deutsch">
+          <svg width="20" height="15" viewBox="0 0 20 15">
+            <rect width="20" height="5" fill="#000" />
+            <rect y="5" width="20" height="5" fill="#D00" />
+            <rect y="10" width="20" height="5" fill="#FFCE00" />
+          </svg>
+        </button>
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle theme">
+        <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </svg>
+        <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      </button>
+    </div>
+  </div>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-    </main>
-  </body>
+  <main class="container">
+    <div class="form-section">
+      <div class="form-group required">
+        <label for="map-folder" data-i18n="mapFolder">Map Folder</label>
+        <div class="input-group">
+          <input type="text" id="map-folder" readonly placeholder="Select map folder..."
+            data-i18n-placeholder="selectMapFolder">
+          <button class="btn-secondary" id="select-map-folder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+            <span data-i18n="browse">Browse</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="readme-path" data-i18n="readmePath">README Path (Optional)</label>
+        <div class="input-group">
+          <input type="text" id="readme-path" readonly placeholder="Select README file..."
+            data-i18n-placeholder="selectReadme">
+          <button class="btn-secondary" id="select-readme">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+            </svg>
+            <span data-i18n="browse">Browse</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="output-folder" data-i18n="outputFolder">Output Folder (Optional)</label>
+        <div class="input-group">
+          <input type="text" id="output-folder" readonly placeholder="Select output folder..."
+            data-i18n-placeholder="selectOutput">
+          <button class="btn-secondary" id="select-output-folder">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+            <span data-i18n="browse">Browse</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="zip-name" data-i18n="zipName">ZIP Name (Optional)</label>
+        <input type="text" id="zip-name" placeholder="my-map-bundle" data-i18n-placeholder="zipNamePlaceholder">
+      </div>
+
+      <button class="btn-primary" id="bundle-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="21 8 21 21 3 21 3 8" />
+          <rect x="1" y="3" width="22" height="5" />
+          <line x1="10" y1="12" x2="14" y2="12" />
+        </svg>
+        <span data-i18n="createBundle">Create Bundle</span>
+      </button>
+
+      <div class="status-message" id="status-message"></div>
+    </div>
+  </main>
+</body>
+
 </html>
