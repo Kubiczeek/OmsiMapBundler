@@ -1,4 +1,35 @@
 import { open } from "@tauri-apps/plugin-dialog";
+import { invoke } from "@tauri-apps/api/core";
+
+// Types
+interface ValidationResult {
+  valid: boolean;
+  missing_files: string[];
+  error?: string;
+}
+
+interface DependencyResult {
+  sceneryobjects: string[];
+  splines: string[];
+  textures: string[];
+  humans: string[];
+  vehicles: string[];
+  tile_maps: string[];
+  error?: string;
+}
+
+interface BundleRequest {
+  map_folder: string;
+  output_folder?: string;
+  zip_name?: string;
+  readme_path?: string;
+}
+
+interface BundleResult {
+  success: boolean;
+  output_path?: string;
+  error?: string;
+}
 
 // Translations
 const translations: Record<string, Record<string, string>> = {
@@ -17,6 +48,9 @@ const translations: Record<string, Record<string, string>> = {
     successBundle: "Bundle created successfully!",
     errorBundle: "Error creating bundle",
     processing: "Processing...",
+    validatingMap: "Validating map folder...",
+    missingFiles: "Missing required files",
+    invalidFolder: "Invalid map folder",
   },
   cs: {
     mapFolder: "Složka s Mapou",
@@ -33,6 +67,9 @@ const translations: Record<string, Record<string, string>> = {
     successBundle: "Balíček úspěšně vytvořen!",
     errorBundle: "Chyba při vytváření balíčku",
     processing: "Zpracovávám...",
+    validatingMap: "Ověřuji složku s mapou...",
+    missingFiles: "Chybí povinné soubory",
+    invalidFolder: "Neplatná složka s mapou",
   },
   de: {
     mapFolder: "Karten-Ordner",
@@ -49,6 +86,9 @@ const translations: Record<string, Record<string, string>> = {
     successBundle: "Paket erfolgreich erstellt!",
     errorBundle: "Fehler beim Erstellen des Pakets",
     processing: "Verarbeitung...",
+    validatingMap: "Kartenordner validieren...",
+    missingFiles: "Erforderliche Dateien fehlen",
+    invalidFolder: "Ungültiger Kartenordner",
   },
 };
 
@@ -138,28 +178,97 @@ bundleBtn?.addEventListener("click", async () => {
 
   try {
     bundleBtn.disabled = true;
-    showStatus(translations[currentLang].processing, "info");
+    showStatus(translations[currentLang].validatingMap, "info");
 
-    // TODO: Call Rust backend to create bundle
-    // For now, we'll log the parameters that will be sent
-    console.log("Bundle parameters:", {
+    // Validate map folder
+    const validation = await invoke<ValidationResult>("validate_map_folder", {
       mapFolder: mapFolderPath,
-      readmePath: readmePath || null,
-      outputFolder: outputFolderPath || null,
-      zipName: zipNameInput.value || null,
     });
 
-    // await invoke('create_bundle', {
-    //   mapFolder: mapFolderPath,
-    //   readmePath: readmePath || null,
-    //   outputFolder: outputFolderPath || null,
-    //   zipName: zipNameInput.value || null
-    // });
+    if (!validation.valid) {
+      if (validation.error) {
+        showStatus(
+          `${translations[currentLang].invalidFolder}: ${validation.error}`,
+          "error"
+        );
+      } else {
+        showStatus(
+          `${
+            translations[currentLang].missingFiles
+          }: ${validation.missing_files.join(", ")}`,
+          "error"
+        );
+      }
+      return;
+    }
 
-    // Simulate processing for now
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    showStatus(translations[currentLang].processing, "info");
 
-    showStatus(translations[currentLang].successBundle, "success");
+    // Extract all dependencies
+    console.log("Extracting dependencies from map folder...");
+    const dependencies = await invoke<DependencyResult>(
+      "extract_dependencies",
+      {
+        mapFolder: mapFolderPath,
+      }
+    );
+
+    console.log("=== MAP DEPENDENCIES ===");
+    console.log(
+      `Found ${dependencies.tile_maps.length} tile maps:`,
+      dependencies.tile_maps
+    );
+    console.log(
+      `Found ${dependencies.sceneryobjects.length} scenery objects:`,
+      dependencies.sceneryobjects
+    );
+    console.log(
+      `Found ${dependencies.splines.length} splines:`,
+      dependencies.splines
+    );
+    console.log(
+      `Found ${dependencies.textures.length} textures:`,
+      dependencies.textures
+    );
+    console.log(
+      `Found ${dependencies.humans.length} human models:`,
+      dependencies.humans
+    );
+    console.log(
+      `Found ${dependencies.vehicles.length} vehicles:`,
+      dependencies.vehicles
+    );
+    console.log("=======================");
+
+    // Call create_bundle API
+    const bundleRequest: BundleRequest = {
+      map_folder: mapFolderPath,
+      readme_path: readmePath || undefined,
+      output_folder: outputFolderPath || undefined,
+      zip_name: zipNameInput.value || undefined,
+    };
+
+    console.log("Creating bundle with parameters:", bundleRequest);
+
+    const result = await invoke<BundleResult>("create_bundle", {
+      request: bundleRequest,
+    });
+
+    if (result.success) {
+      showStatus(
+        `${translations[currentLang].successBundle}\n${
+          result.output_path || ""
+        }`,
+        "success"
+      );
+    } else {
+      showStatus(
+        `${translations[currentLang].errorBundle}: ${
+          result.error || "Unknown error"
+        }`,
+        "error"
+      );
+    }
   } catch (error) {
     showStatus(`${translations[currentLang].errorBundle}: ${error}`, "error");
   } finally {
