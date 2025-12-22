@@ -47,7 +47,7 @@ const translations: Record<string, Record<string, string>> = {
     errorSelectMap: "Please select a map folder",
     successBundle: "Bundle created successfully!",
     errorBundle: "Error creating bundle",
-    processing: "Processing...",
+    processing: "Creating bundle... This may take a moment.",
     validatingMap: "Validating map folder...",
     missingFiles: "Missing required files",
     invalidFolder: "Invalid map folder",
@@ -66,7 +66,7 @@ const translations: Record<string, Record<string, string>> = {
     errorSelectMap: "Prosím vyberte složku s mapou",
     successBundle: "Balíček úspěšně vytvořen!",
     errorBundle: "Chyba při vytváření balíčku",
-    processing: "Zpracovávám...",
+    processing: "Vytvářím balíček... Může to chvíli trvat.",
     validatingMap: "Ověřuji složku s mapou...",
     missingFiles: "Chybí povinné soubory",
     invalidFolder: "Neplatná složka s mapou",
@@ -85,8 +85,8 @@ const translations: Record<string, Record<string, string>> = {
     errorSelectMap: "Bitte wählen Sie einen Kartenordner",
     successBundle: "Paket erfolgreich erstellt!",
     errorBundle: "Fehler beim Erstellen des Pakets",
-    processing: "Verarbeitung...",
-    validatingMap: "Kartenordner validieren...",
+    processing: "Paket wird erstellt... Dies kann einen Moment dauern.",
+    validatingMap: "Kartenordner wird validiert...",
     missingFiles: "Erforderliche Dateien fehlen",
     invalidFolder: "Ungültiger Kartenordner",
   },
@@ -178,7 +178,7 @@ bundleBtn?.addEventListener("click", async () => {
 
   try {
     bundleBtn.disabled = true;
-    showStatus(translations[currentLang].validatingMap, "info");
+    showStatus(translations[currentLang].validatingMap, "processing");
 
     // Validate map folder
     const validation = await invoke<ValidationResult>("validate_map_folder", {
@@ -202,7 +202,7 @@ bundleBtn?.addEventListener("click", async () => {
       return;
     }
 
-    showStatus(translations[currentLang].processing, "info");
+    showStatus(translations[currentLang].processing, "processing");
 
     // Extract all dependencies
     console.log("Extracting dependencies from map folder...");
@@ -322,11 +322,25 @@ function updateLanguage() {
 }
 
 // Show Status
-function showStatus(message: string, type: "error" | "success" | "info") {
-  statusMessage.textContent = message;
+function showStatus(
+  message: string,
+  type: "error" | "success" | "info" | "processing"
+) {
+  statusMessage.innerHTML = "";
   statusMessage.className = `status-message visible ${type}`;
 
-  if (type === "success" || type === "info") {
+  if (type === "processing") {
+    const spinner = document.createElement("div");
+    spinner.className = "spinner";
+    statusMessage.appendChild(spinner);
+  }
+
+  const textSpan = document.createElement("span");
+  textSpan.className = "status-text";
+  textSpan.textContent = message;
+  statusMessage.appendChild(textSpan);
+
+  if (type === "success") {
     setTimeout(() => {
       statusMessage.classList.remove("visible");
     }, 5000);

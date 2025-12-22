@@ -1,8 +1,10 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::collections::HashSet;
 use crate::types::{BundleRequest, BundleResult};
 use crate::extraction::extract_dependencies;
 use crate::utils::{copy_file_with_folders, copy_dir_all, create_zip};
+use crate::dependencies;
 
 // Create the bundle ZIP file with all dependencies
 pub fn create_bundle(request: BundleRequest) -> BundleResult {
@@ -55,66 +57,48 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
     
     println!("Created temp folder: {:?}", temp_dir);
     
+    // Extract nested dependencies for humans
+    println!("Extracting nested dependencies for humans...");
+    let human_deps = dependencies::extract_nested_dependencies(&deps.humans, "human", omsi_root);
+    println!("Found {} nested human dependencies", human_deps.len());
+    
+    // Combine all files to copy
+    let mut all_files = HashSet::new();
+    all_files.extend(deps.sceneryobjects.iter().cloned());
+    all_files.extend(deps.splines.iter().cloned());
+    all_files.extend(deps.textures.iter().cloned());
+    all_files.extend(human_deps); // Use expanded human dependencies
+    all_files.extend(deps.vehicles.iter().cloned());
+    
     // Copy all dependencies
     let mut copied_files = 0;
     let mut failed_files = Vec::new();
     
-    // Copy scenery objects
-    for obj in &deps.sceneryobjects {
-        let src = omsi_root.join(obj);
-        let dest = temp_dir.join(obj);
-        if let Err(e) = copy_file_with_folders(&src, &dest) {
-            failed_files.push(format!("{}: {}", obj, e));
-        } else {
-            copied_files += 1;
+    for file_path in &all_files {
+        let src = omsi_root.join(file_path);
+        let dest = temp_dir.join(file_path);
+        
+        // Debug: print full source path for texture files
+        if file_path.starts_with("Texture\\") {
+            println!("Trying to copy texture from: {:?}", src);
+            println!("  Exists: {}", src.exists());
         }
-    }
-    
-    // Copy splines
-    for spline in &deps.splines {
-        let src = omsi_root.join(spline);
-        let dest = temp_dir.join(spline);
+        
         if let Err(e) = copy_file_with_folders(&src, &dest) {
-            failed_files.push(format!("{}: {}", spline, e));
-        } else {
-            copied_files += 1;
-        }
-    }
-    
-    // Copy textures
-    for texture in &deps.textures {
-        let src = omsi_root.join(texture);
-        let dest = temp_dir.join(texture);
-        if let Err(e) = copy_file_with_folders(&src, &dest) {
-            failed_files.push(format!("{}: {}", texture, e));
-        } else {
-            copied_files += 1;
-        }
-    }
-    
-    // Copy humans
-    for human in &deps.humans {
-        let src = omsi_root.join(human);
-        let dest = temp_dir.join(human);
-        if let Err(e) = copy_file_with_folders(&src, &dest) {
-            failed_files.push(format!("{}: {}", human, e));
-        } else {
-            copied_files += 1;
-        }
-    }
-    
-    // Copy vehicles
-    for vehicle in &deps.vehicles {
-        let src = omsi_root.join(vehicle);
-        let dest = temp_dir.join(vehicle);
-        if let Err(e) = copy_file_with_folders(&src, &dest) {
-            failed_files.push(format!("{}: {}", vehicle, e));
+            println!("FAILED to copy {}: {}", file_path, e);
+            failed_files.push(format!("{}: {}", file_path, e));
         } else {
             copied_files += 1;
         }
     }
     
     println!("Copied {} files, {} failed", copied_files, failed_files.len());
+    if !failed_files.is_empty() {
+        println!("Failed files:");
+        for failed in &failed_files {
+            println!("  - {}", failed);
+        }
+    }
     
     // Copy entire map folder to temp/maps/mapname
     let map_dest = temp_dir.join("maps").join(map_name);

@@ -4,6 +4,7 @@ mod validation;
 mod extraction;
 mod bundling;
 mod utils;
+mod dependencies;
 
 // Re-export types for Tauri commands
 use types::{ValidationResult, DependencyResult, BundleRequest, BundleResult};
