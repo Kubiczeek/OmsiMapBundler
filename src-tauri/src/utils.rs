@@ -1,8 +1,7 @@
 use std::path::Path;
 use std::fs;
 use std::fs::File;
-use zip::ZipWriter;
-use zip::write::SimpleFileOptions;
+use mtzip::ZipArchive;
 use walkdir::WalkDir;
 
 // Helper function to copy a file and create parent directories
@@ -38,38 +37,53 @@ pub fn copy_dir_all(src: &Path, dest: &Path) -> std::io::Result<()> {
 pub fn create_zip(
     src_dir: &Path,
     dest_file: &Path,
-    compression_method: &str,
-    compression_level: u8,
+    _compression_method: &str,
+    _compression_level: u8,
 ) -> std::io::Result<()> {
-    let file = File::create(dest_file)?;
-    let mut zip = ZipWriter::new(file);
-    let level = compression_level.min(9); // clamp to zip allowed range
-
-    let base_options = match compression_method.to_lowercase().as_str() {
-        "stored" => SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Stored)
-            .compression_level(None),
-        _ => SimpleFileOptions::default()
-            .compression_method(zip::CompressionMethod::Deflated)
-            .compression_level(Some(level as i64)),
-    };
+    let mut zipper = ZipArchive::new();
     
+    // We need to collect paths into a vector to ensure they live long enough for the zipper
+    // mtzip stores references to paths, so the paths must outlive the zipper.write() call
+    let mut entries = Vec::new();
     for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
-        let path = entry.path();
-        let name = path.strip_prefix(src_dir).unwrap();
-        
-        // Convert path to string with forward slashes for ZIP format
-        let name_str = name.to_string_lossy().replace('\\', "/");
-        
-        if path.is_file() {
-            zip.start_file(&name_str, base_options)?;
-            let mut f = File::open(path)?;
-            std::io::copy(&mut f, &mut zip)?;
-        } else if !name.as_os_str().is_empty() {
-            zip.add_directory(&name_str, base_options)?;
+        entries.push(entry.path().to_path_buf());
+    }
+
+    println!("[ZIP] Found {} entries to compress in {:?}", entries.len(), src_dir);
+
+    // 1. Add all directories first
+    let mut dir_count = 0;
+    for path in &entries {
+        if path.is_dir() {
+            let name = path.strip_prefix(src_dir).unwrap();
+            if name.as_os_str().is_empty() {
+                continue;
+            }
+            let name_str = name.to_string_lossy().replace('\\', "/");
+            zipper.add_directory(name_str.to_owned()).done();
+            dir_count += 1;
         }
     }
-    
-    zip.finish()?;
+    println!("[ZIP] Added {} directories", dir_count);
+
+    // 2. Add all files
+    let mut file_count = 0;
+    for path in &entries {
+        if path.is_file() {
+            let name = path.strip_prefix(src_dir).unwrap();
+            let name_str = name.to_string_lossy().replace('\\', "/");
+            zipper.add_file_from_fs(path.as_path(), name_str.to_owned()).done();
+            file_count += 1;
+        }
+    }
+    println!("[ZIP] Added {} files", file_count);
+
+    println!("[ZIP] Writing ZIP file to {:?}", dest_file);
+    let mut file = File::create(dest_file)?;
+    zipper.write(&mut file).map_err(|e| {
+        println!("[ZIP ERROR] Failed to write: {}", e);
+        std::io::Error::new(std::io::ErrorKind::Other, e)
+    })?;
+    println!("[ZIP] Successfully written {} bytes", file.metadata()?.len());
     Ok(())
 }

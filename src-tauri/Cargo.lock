@@ -2157,6 +2157,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "mtzip"
+version = "4.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a496dab362c1f6c49aaa1fdd288fe4472df12f44582610a74d1ccc7e8c40a75d"
+dependencies = [
+ "cfg-if",
+ "flate2",
+]
+
+[[package]]
 name = "muda"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2487,6 +2497,7 @@ version = "0.1.0"
 dependencies = [
  "encoding_rs",
  "encoding_rs_io",
+ "mtzip",
  "serde",
  "serde_json",
  "tauri",
