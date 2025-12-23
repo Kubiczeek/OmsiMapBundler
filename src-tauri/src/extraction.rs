@@ -255,11 +255,16 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     if let Ok(ailists_content) = fs::read_to_string(path.join("ailists.cfg")) {
         for line in ailists_content.lines() {
             let trimmed = line.trim();
-            if trimmed.ends_with(".bus") || trimmed.ends_with(".ovh") || trimmed.ends_with(".zug") || trimmed.ends_with(".sco") {
-                // Split by tab to get just the path
-                let parts: Vec<&str> = trimmed.split('\t').collect();
-                if !parts.is_empty() {
-                    vehicles.insert(parts[0].to_string());
+            // Skip empty lines or section headers
+            if trimmed.is_empty() || trimmed.starts_with('[') {
+                continue;
+            }
+
+            // Split by whitespace to handle "path number" format
+            // This handles both tabs and spaces
+            if let Some(first_part) = trimmed.split_whitespace().next() {
+                if first_part.ends_with(".bus") || first_part.ends_with(".ovh") || first_part.ends_with(".zug") || first_part.ends_with(".sco") {
+                    vehicles.insert(first_part.to_string());
                 }
             }
         }
