@@ -167,6 +167,14 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
     
     // Determine output path
     let zip_name = request.zip_name.unwrap_or_else(|| format!("{}.zip", map_name));
+    
+    // Ensure zip_name has .zip extension
+    let zip_name = if !zip_name.to_lowercase().ends_with(".zip") {
+        format!("{}.zip", zip_name)
+    } else {
+        zip_name
+    };
+    
     let output_path = if let Some(out_folder) = request.output_folder {
         PathBuf::from(out_folder).join(&zip_name)
     } else {
