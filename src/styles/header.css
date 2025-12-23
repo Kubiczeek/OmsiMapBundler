@@ -29,6 +29,14 @@
   padding: 4px 10px;
   background-color: var(--primary);
   border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.app-version:hover {
+  background-color: var(--accent);
+  color: white;
+  border-color: var(--accent);
 }
 
 .header-controls {

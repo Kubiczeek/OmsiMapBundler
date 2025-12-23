@@ -13,7 +13,7 @@
   <div class="app-header">
     <div class="title-container">
       <h1 class="app-title">OMSI Map Bundler</h1>
-      <span class="app-version">v1.0.0</span>
+      <span class="app-version" id="app-version" title="View Changelog">v1.0.0</span>
     </div>
     <div class="header-controls">
       <div class="language-switcher">
@@ -150,8 +150,7 @@
                 <polyline points="7 10 12 15 17 10"></polyline>
                 <line x1="12" y1="15" x2="12" y2="3"></line>
               </svg>
-              <span class="compression-current" id="compression-current" data-i18n="compressionBalanced">Balanced
-                (Deflate level 6)</span>
+              <span class="compression-current" id="compression-current" data-i18n="compressionBalanced">Balanced</span>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                 class="chevron">
                 <polyline points="6 9 12 15 18 9"></polyline>
@@ -159,13 +158,11 @@
             </button>
             <div class="compression-dropdown" id="compression-dropdown">
               <button class="compression-option" data-value="none" data-i18n="compressionNone" type="button">No
-                compression (fastest, largest)</button>
-              <button class="compression-option" data-value="fast" data-i18n="compressionFast" type="button">Fast
-                (Deflate level 1)</button>
+                compression</button>
+              <button class="compression-option" data-value="fast" data-i18n="compressionFast" type="button">Fast</button>
               <button class="compression-option active" data-value="balanced" data-i18n="compressionBalanced"
-                type="button">Balanced (Deflate level 6)</button>
-              <button class="compression-option" data-value="max" data-i18n="compressionMax" type="button">Max (Deflate
-                level 9, slowest)</button>
+                type="button">Balanced</button>
+              <button class="compression-option" data-value="max" data-i18n="compressionMax" type="button">Max</button>
             </div>
           </div>
         </div>
@@ -243,6 +240,31 @@
             This tool is provided "as is" without warranty of any kind. Always backup your files before using this tool.
             The author is not responsible for any loss of data or damages that may occur from using this software.
           </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Changelog Modal -->
+  <div class="modal" id="changelog-modal">
+    <div class="modal-content">
+      <button class="modal-close" id="changelog-close">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+      <h2 data-i18n="changelogTitle">Changelog</h2>
+      <div class="modal-body">
+        <div class="changelog-entry">
+          <h3>v1.0.0</h3>
+          <ul>
+            <li data-i18n="changelogInitialRelease">Initial release of OMSI Map Bundler</li>
+            <li data-i18n="changelogFeature1">Automatic dependency detection (Sceneryobjects, Splines, Textures)</li>
+            <li data-i18n="changelogFeature2">Vehicle and Train dependency support</li>
+            <li data-i18n="changelogFeature3">Multi-threaded compression for faster bundling</li>
+            <li data-i18n="changelogFeature4">Modern and user-friendly interface</li>
+          </ul>
         </div>
       </div>
     </div>

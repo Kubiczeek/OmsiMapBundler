@@ -515,3 +515,22 @@ infoModal?.addEventListener("click", (e) => {
     infoModal.classList.remove("visible");
   }
 });
+
+// Changelog Modal Controls
+const appVersion = document.getElementById("app-version");
+const changelogModal = document.getElementById("changelog-modal");
+const changelogClose = document.getElementById("changelog-close");
+
+appVersion?.addEventListener("click", () => {
+  changelogModal?.classList.add("visible");
+});
+
+changelogClose?.addEventListener("click", () => {
+  changelogModal?.classList.remove("visible");
+});
+
+changelogModal?.addEventListener("click", (e) => {
+  if (e.target === changelogModal) {
+    changelogModal.classList.remove("visible");
+  }
+});
