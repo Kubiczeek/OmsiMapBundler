@@ -2,8 +2,10 @@
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 48px 32px 32px;  flex: 1;
-  width: 100%;}
+  padding: 48px 32px 32px;
+  flex: 1;
+  width: 100%;
+}
 
 /* Form Section */
 .form-section {
