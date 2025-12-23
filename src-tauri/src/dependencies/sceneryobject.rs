@@ -92,8 +92,38 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
             }
         }
         
+        // Extract CTC folders
+        if trimmed == "[CTC]" {
+            lines.next(); // Skip variable
+            if let Some(folder_line) = lines.next() {
+                let folder_rel_path = folder_line.trim();
+                if !folder_rel_path.is_empty() {
+                    // Try relative to sco folder
+                    let folder_path = sco_folder.join(folder_rel_path);
+                    let full_folder_path = omsi_root.join(&folder_path);
+                    
+                    if full_folder_path.exists() && full_folder_path.is_dir() {
+                        // Add all files in this folder
+                        if let Ok(entries) = std::fs::read_dir(&full_folder_path) {
+                            for entry in entries.flatten() {
+                                let path = entry.path();
+                                if path.is_file() {
+                                    // Calculate relative path from omsi root
+                                    // We constructed full_folder_path from omsi_root + sco_folder + folder_rel_path
+                                    // So we can reconstruct the relative path
+                                    let file_name = path.file_name().unwrap();
+                                    let rel_path = folder_path.join(file_name);
+                                    dependencies.insert(rel_path.to_string_lossy().replace('/', "\\"));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Extract textures from [matl] sections
-        if trimmed == "[matl]" {
+        if trimmed == "[matl]" || trimmed == "[matl_change]" || trimmed == "[matl_lightmap]" {
             if let Some(tex_line) = lines.next() {
                 let tex_file = tex_line.trim();
                 if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || 
@@ -108,6 +138,30 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
                     };
                     
                     // Find all texture variants (different extensions, night folder, etc.)
+                    add_texture_variants(base_name, &sco_folder, omsi_root, &mut dependencies);
+                }
+            }
+        }
+
+        // Extract textures from [CTCTexture] sections
+        if trimmed == "[CTCTexture]" {
+            // Next line is variable name, skip it
+            lines.next();
+            // Following line is the texture path
+            if let Some(tex_line) = lines.next() {
+                let tex_file = tex_line.trim();
+                if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || 
+                    tex_file.ends_with(".bmp") || tex_file.ends_with(".dds") || 
+                    tex_file.ends_with(".png") || tex_file.ends_with(".tga")) {
+                    
+                    // Get base name without extension
+                    let base_name = if let Some(pos) = tex_file.rfind('.') {
+                        &tex_file[..pos]
+                    } else {
+                        tex_file
+                    };
+                    
+                    // Find all texture variants
                     add_texture_variants(base_name, &sco_folder, omsi_root, &mut dependencies);
                 }
             }

@@ -7,9 +7,30 @@ use encoding_rs::UTF_16LE;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use crate::types::DependencyResult;
 
+fn check_seasonal_variants(tex_path: &str, omsi_root: &Path, textures: &mut HashSet<String>) {
+    let lower_path = tex_path.to_lowercase();
+    // Only check if it is in the main Texture folder
+    if lower_path.starts_with("texture\\") || lower_path.starts_with("texture/") {
+        let path_obj = Path::new(tex_path);
+        if let Some(file_name) = path_obj.file_name() {
+            let seasons = ["Winter", "WinterSnow", "Spring", "Fall"];
+            for season in seasons {
+                // Construct path: Texture/Season/filename
+                let seasonal_rel_path = Path::new("Texture").join(season).join(file_name);
+                let full_path = omsi_root.join(&seasonal_rel_path);
+                
+                if full_path.exists() {
+                    textures.insert(seasonal_rel_path.to_string_lossy().replace('/', "\\"));
+                }
+            }
+        }
+    }
+}
+
 // Extract all dependencies from map files
 pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     let path = Path::new(&map_folder);
+    let omsi_root = path.parent().and_then(|p| p.parent());
     
     let mut sceneryobjects = HashSet::new();
     let mut splines = HashSet::new();
@@ -61,6 +82,11 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                                 let tex_path = tex_line.trim();
                                 if tex_path.ends_with(".bmp") {
                                     textures.insert(tex_path.to_string());
+                                    
+                                    // Check seasonal variants
+                                    if let Some(root) = omsi_root {
+                                        check_seasonal_variants(tex_path, root, &mut textures);
+                                    }
                                 }
                             }
                             // There might be a detail texture on the next line
@@ -69,6 +95,11 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                                 if detail_path.ends_with(".bmp") {
                                     lines_iter.next();
                                     textures.insert(detail_path.to_string());
+                                    
+                                    // Check seasonal variants
+                                    if let Some(root) = omsi_root {
+                                        check_seasonal_variants(detail_path, root, &mut textures);
+                                    }
                                 }
                             }
                         }
