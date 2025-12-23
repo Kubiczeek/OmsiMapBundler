@@ -1,4 +1,8 @@
 pub mod human;
+pub mod sceneryobject;
+pub mod spline;
+pub mod train;
+pub mod vehicle;
 
 use std::path::Path;
 use std::collections::HashSet;
@@ -18,7 +22,29 @@ pub fn extract_nested_dependencies(
                     all_dependencies.extend(deps);
                 }
             }
-            // TODO: Add more asset types (scenery objects, splines, vehicles, etc.)
+            "sceneryobject" => {
+                if let Some(deps) = sceneryobject::extract_sceneryobject_dependencies(asset_path, omsi_root) {
+                    all_dependencies.extend(deps);
+                }
+            }
+            "spline" => {
+                if let Some(deps) = spline::extract_spline_dependencies(asset_path, omsi_root) {
+                    all_dependencies.extend(deps);
+                }
+            }
+            "vehicle" => {
+                // Distinguish between trains (.zug) and buses/vehicles (.bus/.ovh/.sco)
+                if asset_path.ends_with(".zug") {
+                    if let Some(deps) = train::extract_train_dependencies(asset_path, omsi_root) {
+                        all_dependencies.extend(deps);
+                    }
+                } else if asset_path.ends_with(".bus") || asset_path.ends_with(".ovh") || asset_path.ends_with(".sco") {
+                    if let Some(deps) = vehicle::extract_vehicle_dependencies(asset_path, omsi_root) {
+                        all_dependencies.extend(deps);
+                    }
+                }
+            }
+            // TODO: Add more asset types
             _ => {}
         }
     }

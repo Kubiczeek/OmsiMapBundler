@@ -62,41 +62,83 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
     let human_deps = dependencies::extract_nested_dependencies(&deps.humans, "human", omsi_root);
     println!("Found {} nested human dependencies", human_deps.len());
     
-    // Combine all files to copy
-    let mut all_files = HashSet::new();
-    all_files.extend(deps.sceneryobjects.iter().cloned());
-    all_files.extend(deps.splines.iter().cloned());
-    all_files.extend(deps.textures.iter().cloned());
-    all_files.extend(human_deps); // Use expanded human dependencies
-    all_files.extend(deps.vehicles.iter().cloned());
+    // Extract nested dependencies for sceneryobjects
+    println!("Extracting nested dependencies for sceneryobjects...");
+    let sceneryobject_deps = dependencies::extract_nested_dependencies(&deps.sceneryobjects, "sceneryobject", omsi_root);
+    println!("Found {} nested sceneryobject dependencies", sceneryobject_deps.len());
     
-    // Copy all dependencies
+    // Extract nested dependencies for splines
+    println!("Extracting nested dependencies for splines...");
+    let spline_deps = dependencies::extract_nested_dependencies(&deps.splines, "spline", omsi_root);
+    println!("Found {} nested spline dependencies", spline_deps.len());
+    
+    // Extract nested dependencies for vehicles (trains)
+    println!("Extracting nested dependencies for vehicles...");
+    let vehicle_deps = dependencies::extract_nested_dependencies(&deps.vehicles, "vehicle", omsi_root);
+    println!("Found {} nested vehicle dependencies", vehicle_deps.len());
+    
+    // Separate folders from files
+    let mut folders_to_copy = HashSet::new();
+    let mut files_to_copy = HashSet::new();
+    
+    for dep in sceneryobject_deps.iter()
+        .chain(spline_deps.iter())
+        .chain(human_deps.iter())
+        .chain(vehicle_deps.iter())
+        .chain(deps.textures.iter()) {
+        
+        if dep.starts_with("FOLDER:") {
+            // This is a folder marker - extract the actual path
+            let folder_path = dep.strip_prefix("FOLDER:").unwrap();
+            folders_to_copy.insert(folder_path.to_string());
+        } else {
+            files_to_copy.insert(dep.clone());
+        }
+    }
+    
+    // Copy all files
     let mut copied_files = 0;
     let mut failed_files = Vec::new();
     
-    for file_path in &all_files {
+    for file_path in &files_to_copy {
         let src = omsi_root.join(file_path);
         let dest = temp_dir.join(file_path);
         
-        // Debug: print full source path for texture files
-        if file_path.starts_with("Texture\\") {
-            println!("Trying to copy texture from: {:?}", src);
-            println!("  Exists: {}", src.exists());
-        }
-        
         if let Err(e) = copy_file_with_folders(&src, &dest) {
-            println!("FAILED to copy {}: {}", file_path, e);
             failed_files.push(format!("{}: {}", file_path, e));
         } else {
             copied_files += 1;
         }
     }
     
-    println!("Copied {} files, {} failed", copied_files, failed_files.len());
+    // Copy all folders
+    let mut copied_folders = 0;
+    println!("Preparing to copy {} vehicle folders...", folders_to_copy.len());
+    for folder_path in &folders_to_copy {
+        println!("  Copying vehicle folder: {}", folder_path);
+        let src = omsi_root.join(folder_path);
+        let dest = temp_dir.join(folder_path);
+        
+        if src.exists() {
+            if let Ok(_) = copy_dir_all(&src, &dest) {
+                copied_folders += 1;
+                println!("Copied vehicle folder: {}", folder_path);
+            } else {
+                println!("Warning: Failed to copy vehicle folder: {}", folder_path);
+            }
+        }
+    }
+    
+    println!("Copied {} files and {} folders successfully", copied_files, copied_folders);
     if !failed_files.is_empty() {
-        println!("Failed files:");
-        for failed in &failed_files {
-            println!("  - {}", failed);
+        println!("Warning: {} optional files were not found (this is usually normal):", failed_files.len());
+        for (idx, failed) in failed_files.iter().enumerate() {
+            if idx < 5 {
+                println!("  - {}", failed);
+            }
+        }
+        if failed_files.len() > 5 {
+            println!("  ... and {} more", failed_files.len() - 5);
         }
     }
     

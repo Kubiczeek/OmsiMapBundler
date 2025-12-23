@@ -218,7 +218,13 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
         for line in parklist_content.lines() {
             let trimmed = line.trim();
             if trimmed.ends_with(".sco") {
-                sceneryobjects.insert(trimmed.to_string());
+                // Check if this .sco is in Vehicles folder (static vehicle)
+                let lower_path = trimmed.to_lowercase();
+                if lower_path.starts_with("vehicles\\") || lower_path.starts_with("vehicles/") {
+                    vehicles.insert(trimmed.to_string());
+                } else {
+                    sceneryobjects.insert(trimmed.to_string());
+                }
             }
         }
     }
@@ -227,7 +233,7 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     if let Ok(ailists_content) = fs::read_to_string(path.join("ailists.cfg")) {
         for line in ailists_content.lines() {
             let trimmed = line.trim();
-            if trimmed.ends_with(".bus") || trimmed.ends_with(".ovh") || trimmed.ends_with(".zug") {
+            if trimmed.ends_with(".bus") || trimmed.ends_with(".ovh") || trimmed.ends_with(".zug") || trimmed.ends_with(".sco") {
                 // Split by tab to get just the path
                 let parts: Vec<&str> = trimmed.split('\t').collect();
                 if !parts.is_empty() {
