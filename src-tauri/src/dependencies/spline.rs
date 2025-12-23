@@ -100,7 +100,18 @@ fn add_texture_variants(base_name: &str, sli_folder: &Path, omsi_root: &Path, de
             
             if full_file_path.exists() {
                 let path_str = file_path.to_string_lossy().replace('/', "\\");
-                dependencies.insert(path_str);
+                dependencies.insert(path_str.clone());
+                
+                // Also add .cfg and .surf files if they exist
+                let cfg_path = format!("{}.cfg", path_str);
+                let surf_path = format!("{}.surf", path_str);
+                
+                if omsi_root.join(&cfg_path).exists() {
+                    dependencies.insert(cfg_path);
+                }
+                if omsi_root.join(&surf_path).exists() {
+                    dependencies.insert(surf_path);
+                }
             }
             
             // Also check case-insensitive match
@@ -111,7 +122,18 @@ fn add_texture_variants(base_name: &str, sli_folder: &Path, omsi_root: &Path, de
                 
                 if full_file_path_ci.exists() {
                     let path_str = file_path_ci.to_string_lossy().replace('/', "\\");
-                    dependencies.insert(path_str);
+                    dependencies.insert(path_str.clone());
+                    
+                    // Also add .cfg and .surf files if they exist
+                    let cfg_path = format!("{}.cfg", path_str);
+                    let surf_path = format!("{}.surf", path_str);
+                    
+                    if omsi_root.join(&cfg_path).exists() {
+                        dependencies.insert(cfg_path);
+                    }
+                    if omsi_root.join(&surf_path).exists() {
+                        dependencies.insert(surf_path);
+                    }
                 }
             }
         }
@@ -130,7 +152,18 @@ fn add_texture_variants(base_name: &str, sli_folder: &Path, omsi_root: &Path, de
                         
                         if full_file_path.exists() {
                             let path_str = file_path.to_string_lossy().replace('/', "\\");
-                            dependencies.insert(path_str);
+                            dependencies.insert(path_str.clone());
+                            
+                            // Also add .cfg and .surf files if they exist
+                            let cfg_path = format!("{}.cfg", path_str);
+                            let surf_path = format!("{}.surf", path_str);
+                            
+                            if omsi_root.join(&cfg_path).exists() {
+                                dependencies.insert(cfg_path);
+                            }
+                            if omsi_root.join(&surf_path).exists() {
+                                dependencies.insert(surf_path);
+                            }
                         }
                         
                         // Case-insensitive check
@@ -141,7 +174,18 @@ fn add_texture_variants(base_name: &str, sli_folder: &Path, omsi_root: &Path, de
                             
                             if full_file_path_ci.exists() {
                                 let path_str = file_path_ci.to_string_lossy().replace('/', "\\");
-                                dependencies.insert(path_str);
+                                dependencies.insert(path_str.clone());
+                                
+                                // Also add .cfg and .surf files if they exist
+                                let cfg_path = format!("{}.cfg", path_str);
+                                let surf_path = format!("{}.surf", path_str);
+                                
+                                if omsi_root.join(&cfg_path).exists() {
+                                    dependencies.insert(cfg_path);
+                                }
+                                if omsi_root.join(&surf_path).exists() {
+                                    dependencies.insert(surf_path);
+                                }
                             }
                         }
                     }

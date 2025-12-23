@@ -7,6 +7,32 @@ use encoding_rs::UTF_16LE;
 use encoding_rs_io::DecodeReaderBytesBuilder;
 use crate::types::DependencyResult;
 
+fn add_texture_with_variants(tex_path: &str, omsi_root: &Path, textures: &mut HashSet<String>) {
+    // Add the main texture
+    textures.insert(tex_path.to_string());
+    
+    // Check for .cfg and .surf files
+    let cfg_path = format!("{}.cfg", tex_path);
+    let surf_path = format!("{}.surf", tex_path);
+    
+    if let Some(root) = Some(omsi_root) {
+        // Check if .cfg file exists
+        let cfg_full_path = root.join(&cfg_path);
+        if cfg_full_path.exists() {
+            textures.insert(cfg_path);
+        }
+        
+        // Check if .surf file exists
+        let surf_full_path = root.join(&surf_path);
+        if surf_full_path.exists() {
+            textures.insert(surf_path);
+        }
+    }
+    
+    // Check seasonal variants
+    check_seasonal_variants(tex_path, omsi_root, textures);
+}
+
 fn check_seasonal_variants(tex_path: &str, omsi_root: &Path, textures: &mut HashSet<String>) {
     let lower_path = tex_path.to_lowercase();
     // Only check if it is in the main Texture folder
@@ -14,13 +40,18 @@ fn check_seasonal_variants(tex_path: &str, omsi_root: &Path, textures: &mut Hash
         let path_obj = Path::new(tex_path);
         if let Some(file_name) = path_obj.file_name() {
             let seasons = ["Winter", "WinterSnow", "Spring", "Fall"];
-            for season in seasons {
-                // Construct path: Texture/Season/filename
-                let seasonal_rel_path = Path::new("Texture").join(season).join(file_name);
-                let full_path = omsi_root.join(&seasonal_rel_path);
-                
-                if full_path.exists() {
-                    textures.insert(seasonal_rel_path.to_string_lossy().replace('/', "\\"));
+            
+            // Get the parent directory of the texture (e.g., "Texture" or "Texture\Kostelec-Bor")
+            if let Some(parent_dir) = path_obj.parent() {
+                for season in seasons {
+                    // Construct path: parent_dir/Season/filename
+                    // E.g., Texture\Kostelec-Bor\Winter\alex.bmp or Texture\Winter\gras.bmp
+                    let seasonal_rel_path = parent_dir.join(season).join(file_name);
+                    let full_path = omsi_root.join(&seasonal_rel_path);
+                    
+                    if full_path.exists() {
+                        textures.insert(seasonal_rel_path.to_string_lossy().replace('/', "\\"));
+                    }
                 }
             }
         }
@@ -80,25 +111,30 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                         if trimmed == "[groundtex]" {
                             if let Some(tex_line) = lines_iter.next() {
                                 let tex_path = tex_line.trim();
-                                if tex_path.ends_with(".bmp") {
-                                    textures.insert(tex_path.to_string());
+                                let lower_tex = tex_path.to_lowercase();
+                                // Support .bmp, .jpg, .jpeg, .png, .dds, .tga
+                                if lower_tex.ends_with(".bmp") || lower_tex.ends_with(".jpg") || 
+                                   lower_tex.ends_with(".jpeg") || lower_tex.ends_with(".png") || 
+                                   lower_tex.ends_with(".dds") || lower_tex.ends_with(".tga") {
                                     
-                                    // Check seasonal variants
+                                    // Add texture with .cfg, .surf variants and seasonal variants
                                     if let Some(root) = omsi_root {
-                                        check_seasonal_variants(tex_path, root, &mut textures);
+                                        add_texture_with_variants(tex_path, root, &mut textures);
                                     }
                                 }
                             }
                             // There might be a detail texture on the next line
                             if let Some(detail_line) = lines_iter.peek() {
                                 let detail_path = detail_line.trim();
-                                if detail_path.ends_with(".bmp") {
+                                let lower_detail = detail_path.to_lowercase();
+                                if lower_detail.ends_with(".bmp") || lower_detail.ends_with(".jpg") || 
+                                   lower_detail.ends_with(".jpeg") || lower_detail.ends_with(".png") || 
+                                   lower_detail.ends_with(".dds") || lower_detail.ends_with(".tga") {
                                     lines_iter.next();
-                                    textures.insert(detail_path.to_string());
                                     
-                                    // Check seasonal variants
+                                    // Add texture with .cfg, .surf variants and seasonal variants
                                     if let Some(root) = omsi_root {
-                                        check_seasonal_variants(detail_path, root, &mut textures);
+                                        add_texture_with_variants(detail_path, root, &mut textures);
                                     }
                                 }
                             }
@@ -284,18 +320,50 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     
     // Read ailists.cfg
     if let Ok(ailists_content) = fs::read_to_string(path.join("ailists.cfg")) {
-        for line in ailists_content.lines() {
+        let mut lines_iter = ailists_content.lines().peekable();
+        let mut in_depot_typgroup = false;
+        
+        while let Some(line) = lines_iter.next() {
             let trimmed = line.trim();
-            // Skip empty lines or section headers
-            if trimmed.is_empty() || trimmed.starts_with('[') {
+            
+            // Skip empty lines
+            if trimmed.is_empty() {
                 continue;
             }
-
-            // Split by whitespace to handle "path number" format
-            // This handles both tabs and spaces
-            if let Some(first_part) = trimmed.split_whitespace().next() {
-                if first_part.ends_with(".bus") || first_part.ends_with(".ovh") || first_part.ends_with(".zug") || first_part.ends_with(".sco") {
-                    vehicles.insert(first_part.to_string());
+            
+            // Check if we're entering a depot typgroup section
+            if trimmed.starts_with("[aigroup_depot_typgroup") {
+                in_depot_typgroup = true;
+                continue;
+            }
+            
+            // Check if we're leaving any section
+            if trimmed == "[end]" {
+                in_depot_typgroup = false;
+                continue;
+            }
+            
+            // Skip other section headers
+            if trimmed.starts_with('[') {
+                in_depot_typgroup = false;
+                continue;
+            }
+            
+            // If we're in a depot typgroup, the first non-empty line after the section header is the vehicle path
+            if in_depot_typgroup {
+                // This should be the vehicle path line (e.g., "Vehicles\SOR\SORc10 AUTOMAT.bus")
+                if trimmed.ends_with(".bus") || trimmed.ends_with(".ovh") || trimmed.ends_with(".zug") || trimmed.ends_with(".sco") {
+                    vehicles.insert(trimmed.to_string());
+                    // After we found the vehicle path, the remaining lines in this section are instances
+                    // We need to skip them until we hit [end] or another section
+                    in_depot_typgroup = false;
+                }
+            } else {
+                // Normal aigroup entries: format is "path<tab/space>number"
+                if let Some(first_part) = trimmed.split_whitespace().next() {
+                    if first_part.ends_with(".bus") || first_part.ends_with(".ovh") || first_part.ends_with(".zug") || first_part.ends_with(".sco") {
+                        vehicles.insert(first_part.to_string());
+                    }
                 }
             }
         }

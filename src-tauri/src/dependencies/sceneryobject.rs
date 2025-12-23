@@ -267,6 +267,14 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
         }
     }
     
+    // Additional texture detection: search for textures matching the .sco filename
+    // For example: Dum_cetkovice4.sco should find Dum_cetkovice4_#low.dds
+    if let Some(sco_filename) = Path::new(sco_path).file_stem() {
+        if let Some(sco_name) = sco_filename.to_str() {
+            search_textures_by_prefix(sco_name, &sco_folder, omsi_root, &mut dependencies);
+        }
+    }
+    
     Some(dependencies)
 }
 
@@ -326,11 +334,117 @@ fn extract_sound_config_dependencies(cfg_path: &str, omsi_root: &Path) -> Option
     Some(dependencies)
 }
 
+/// Search for textures in Texture folders that match the given prefix (e.g., sco filename)
+/// For example: "Dum_cetkovice4" will find "Dum_cetkovice4_#low.dds", "Dum_cetkovice4.bmp", etc.
+fn search_textures_by_prefix(prefix: &str, sco_folder: &Path, omsi_root: &Path, dependencies: &mut HashSet<String>) {
+    use std::fs;
+    
+    let texture_extensions = ["jpg", "bmp", "dds", "png", "tga"];
+    
+    // Try multiple texture folder locations
+    let search_paths = vec![
+        sco_folder.join("texture"),  // Sceneryobjects\XYZ\texture\
+        sco_folder.to_path_buf(),    // Sceneryobjects\XYZ\
+        Path::new("Texture").to_path_buf(), // Global Texture\
+    ];
+    
+    for search_path in search_paths {
+        let full_search_path = omsi_root.join(&search_path);
+        
+        if !full_search_path.exists() || !full_search_path.is_dir() {
+            continue;
+        }
+        
+        // Search in main folder
+        if let Ok(entries) = fs::read_dir(&full_search_path) {
+            for entry in entries.flatten() {
+                let entry_path = entry.path();
+                if entry_path.is_file() {
+                    if let Some(filename) = entry_path.file_name().and_then(|n| n.to_str()) {
+                        // Check if filename contains the prefix
+                        let filename_lower = filename.to_lowercase();
+                        let prefix_lower = prefix.to_lowercase();
+                        
+                        if filename_lower.starts_with(&prefix_lower) {
+                            // Check if it has a texture extension
+                            for ext in &texture_extensions {
+                                if filename_lower.ends_with(&format!(".{}", ext)) {
+                                    let file_path = search_path.join(filename);
+                                    let path_str = file_path.to_string_lossy().replace('/', "\\");
+                                    dependencies.insert(path_str.clone());
+                                    
+                                    // Also add .cfg and .surf files if they exist
+                                    let cfg_path = format!("{}.cfg", path_str);
+                                    let surf_path = format!("{}.surf", path_str);
+                                    
+                                    if omsi_root.join(&cfg_path).exists() {
+                                        dependencies.insert(cfg_path);
+                                    }
+                                    if omsi_root.join(&surf_path).exists() {
+                                        dependencies.insert(surf_path);
+                                    }
+                                    
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Also search in subfolders (night, alpha, winter, etc.)
+        let seasonal_folders = ["night", "Night", "alpha", "Alpha", "winter", "Winter", "WinterSnow", "wintersnow", "spring", "Spring", "fall", "Fall"];
+        
+        for subfolder in &seasonal_folders {
+            let seasonal_path = search_path.join(subfolder);
+            let full_seasonal_path = omsi_root.join(&seasonal_path);
+            
+            if full_seasonal_path.exists() && full_seasonal_path.is_dir() {
+                if let Ok(entries) = fs::read_dir(&full_seasonal_path) {
+                    for entry in entries.flatten() {
+                        let entry_path = entry.path();
+                        if entry_path.is_file() {
+                            if let Some(filename) = entry_path.file_name().and_then(|n| n.to_str()) {
+                                let filename_lower = filename.to_lowercase();
+                                let prefix_lower = prefix.to_lowercase();
+                                
+                                if filename_lower.starts_with(&prefix_lower) {
+                                    for ext in &texture_extensions {
+                                        if filename_lower.ends_with(&format!(".{}", ext)) {
+                                            let file_path = seasonal_path.join(filename);
+                                            let path_str = file_path.to_string_lossy().replace('/', "\\");
+                                            dependencies.insert(path_str.clone());
+                                            
+                                            let cfg_path = format!("{}.cfg", path_str);
+                                            let surf_path = format!("{}.surf", path_str);
+                                            
+                                            if omsi_root.join(&cfg_path).exists() {
+                                                dependencies.insert(cfg_path);
+                                            }
+                                            if omsi_root.join(&surf_path).exists() {
+                                                dependencies.insert(surf_path);
+                                            }
+                                            
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Helper function to find all texture variants with the same base name
 fn add_texture_variants(base_name: &str, sco_folder: &Path, omsi_root: &Path, dependencies: &mut HashSet<String>) {
     use std::fs;
     
     let texture_extensions = ["jpg", "bmp", "dds", "png", "tga"];
+    let seasonal_folders = ["night", "Night", "alpha", "Alpha", "winter", "Winter", "WinterSnow", "wintersnow", "spring", "Spring", "fall", "Fall"];
     
     // Try multiple base locations
     let search_paths = vec![
@@ -354,7 +468,18 @@ fn add_texture_variants(base_name: &str, sco_folder: &Path, omsi_root: &Path, de
             
             if full_file_path.exists() {
                 let path_str = file_path.to_string_lossy().replace('/', "\\");
-                dependencies.insert(path_str);
+                dependencies.insert(path_str.clone());
+                
+                // Also add .cfg and .surf files if they exist
+                let cfg_path = format!("{}.cfg", path_str);
+                let surf_path = format!("{}.surf", path_str);
+                
+                if omsi_root.join(&cfg_path).exists() {
+                    dependencies.insert(cfg_path);
+                }
+                if omsi_root.join(&surf_path).exists() {
+                    dependencies.insert(surf_path);
+                }
             }
             
             // Also check case-insensitive match
@@ -365,17 +490,86 @@ fn add_texture_variants(base_name: &str, sco_folder: &Path, omsi_root: &Path, de
                 
                 if full_file_path_ci.exists() {
                     let path_str = file_path_ci.to_string_lossy().replace('/', "\\");
-                    dependencies.insert(path_str);
+                    dependencies.insert(path_str.clone());
+                    
+                    // Also add .cfg and .surf files if they exist
+                    let cfg_path = format!("{}.cfg", path_str);
+                    let surf_path = format!("{}.surf", path_str);
+                    
+                    if omsi_root.join(&cfg_path).exists() {
+                        dependencies.insert(cfg_path);
+                    }
+                    if omsi_root.join(&surf_path).exists() {
+                        dependencies.insert(surf_path);
+                    }
                 }
             }
         }
         
-        // Search in subfolders (like night\, alpha\, etc.)
+        // Search in seasonal/variant subfolders (night, alpha, winter, etc.)
+        for subfolder in &seasonal_folders {
+            let seasonal_path = search_path.join(subfolder);
+            let full_seasonal_path = omsi_root.join(&seasonal_path);
+            
+            if full_seasonal_path.exists() && full_seasonal_path.is_dir() {
+                for ext in &texture_extensions {
+                    let file_name = format!("{}.{}", base_name, ext);
+                    let file_path = seasonal_path.join(&file_name);
+                    let full_file_path = omsi_root.join(&file_path);
+                    
+                    if full_file_path.exists() {
+                        let path_str = file_path.to_string_lossy().replace('/', "\\");
+                        dependencies.insert(path_str.clone());
+                        
+                        // Also add .cfg and .surf files if they exist
+                        let cfg_path = format!("{}.cfg", path_str);
+                        let surf_path = format!("{}.surf", path_str);
+                        
+                        if omsi_root.join(&cfg_path).exists() {
+                            dependencies.insert(cfg_path);
+                        }
+                        if omsi_root.join(&surf_path).exists() {
+                            dependencies.insert(surf_path);
+                        }
+                    }
+                    
+                    // Case-insensitive check
+                    let file_name_lower = format!("{}.{}", base_name.to_lowercase(), ext);
+                    if file_name.to_lowercase() != file_name_lower {
+                        let file_path_ci = seasonal_path.join(&file_name_lower);
+                        let full_file_path_ci = omsi_root.join(&file_path_ci);
+                        
+                        if full_file_path_ci.exists() {
+                            let path_str = file_path_ci.to_string_lossy().replace('/', "\\");
+                            dependencies.insert(path_str.clone());
+                            
+                            // Also add .cfg and .surf files if they exist
+                            let cfg_path = format!("{}.cfg", path_str);
+                            let surf_path = format!("{}.surf", path_str);
+                            
+                            if omsi_root.join(&cfg_path).exists() {
+                                dependencies.insert(cfg_path);
+                            }
+                            if omsi_root.join(&surf_path).exists() {
+                                dependencies.insert(surf_path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Also search any other subfolders we haven't explicitly checked
         if let Ok(entries) = fs::read_dir(&full_search_path) {
             for entry in entries.flatten() {
                 let entry_path = entry.path();
                 if entry_path.is_dir() {
                     let subfolder_name = entry_path.file_name().unwrap().to_string_lossy().to_string();
+                    
+                    // Skip if we already checked this folder
+                    if seasonal_folders.contains(&subfolder_name.as_str()) {
+                        continue;
+                    }
                     
                     for ext in &texture_extensions {
                         let file_name = format!("{}.{}", base_name, ext);
@@ -384,7 +578,18 @@ fn add_texture_variants(base_name: &str, sco_folder: &Path, omsi_root: &Path, de
                         
                         if full_file_path.exists() {
                             let path_str = file_path.to_string_lossy().replace('/', "\\");
-                            dependencies.insert(path_str);
+                            dependencies.insert(path_str.clone());
+                            
+                            // Also add .cfg and .surf files if they exist
+                            let cfg_path = format!("{}.cfg", path_str);
+                            let surf_path = format!("{}.surf", path_str);
+                            
+                            if omsi_root.join(&cfg_path).exists() {
+                                dependencies.insert(cfg_path);
+                            }
+                            if omsi_root.join(&surf_path).exists() {
+                                dependencies.insert(surf_path);
+                            }
                         }
                         
                         // Case-insensitive check
@@ -395,7 +600,18 @@ fn add_texture_variants(base_name: &str, sco_folder: &Path, omsi_root: &Path, de
                             
                             if full_file_path_ci.exists() {
                                 let path_str = file_path_ci.to_string_lossy().replace('/', "\\");
-                                dependencies.insert(path_str);
+                                dependencies.insert(path_str.clone());
+                                
+                                // Also add .cfg and .surf files if they exist
+                                let cfg_path = format!("{}.cfg", path_str);
+                                let surf_path = format!("{}.surf", path_str);
+                                
+                                if omsi_root.join(&cfg_path).exists() {
+                                    dependencies.insert(cfg_path);
+                                }
+                                if omsi_root.join(&surf_path).exists() {
+                                    dependencies.insert(surf_path);
+                                }
                             }
                         }
                     }
@@ -428,38 +644,56 @@ fn extract_o3d_textures(o3d_path: &str, omsi_root: &Path) -> Option<Vec<String>>
     }
     
     let mut textures = Vec::new();
-    let texture_extensions = [".bmp", ".tga", ".dds", ".jpg", ".png"];
+    let texture_extensions = [b".bmp", b".tga", b".dds", b".jpg", b".png", b".BMP", b".TGA", b".DDS", b".JPG", b".PNG"];
     
-    // Search for null-terminated strings that look like texture filenames
-    let mut i = 0;
-    while i < buffer.len() {
-        // Look for printable ASCII characters
-        if buffer[i] >= 32 && buffer[i] < 127 {
-            let start = i;
-            let mut end = i;
-            
-            // Find the end of the string (null terminator or non-ASCII)
-            while end < buffer.len() && buffer[end] >= 32 && buffer[end] < 127 {
-                end += 1;
-            }
-            
-            if end > start {
-                if let Ok(text) = String::from_utf8(buffer[start..end].to_vec()) {
-                    // Check if it looks like a texture filename
-                    let text_lower = text.to_lowercase();
-                    for ext in &texture_extensions {
-                        if text_lower.ends_with(ext) {
-                            // Found a texture reference
-                            textures.push(text.clone());
-                            break;
+    // Search for texture file extensions and then go backwards to find the filename
+    for ext in &texture_extensions {
+        let ext_len = ext.len();
+        let mut i = 0;
+        
+        while i + ext_len <= buffer.len() {
+            // Check if we found an extension
+            if &buffer[i..i + ext_len] == *ext {
+                // Found extension, now go backwards to find the start of the filename
+                let mut start = i;
+                
+                // Go back while we find valid filename characters
+                while start > 0 {
+                    let prev_idx = start - 1;
+                    let c = buffer[prev_idx];
+                    
+                    // Valid filename characters: letters, digits, underscore, hyphen, dot, backslash, forward slash
+                    if (c >= b'A' && c <= b'Z') || 
+                       (c >= b'a' && c <= b'z') ||
+                       (c >= b'0' && c <= b'9') ||
+                       c == b'_' || c == b'-' || c == b'.' || c == b'\\' || c == b'/' || c == b'#' {
+                        start = prev_idx;
+                    } else {
+                        // Found invalid character, stop here
+                        break;
+                    }
+                }
+                
+                // Extract the filename
+                let end = i + ext_len;
+                if end > start && start < buffer.len() {
+                    if let Ok(filename) = String::from_utf8(buffer[start..end].to_vec()) {
+                        // Validate that it looks like a reasonable filename
+                        if filename.len() > ext_len && !textures.contains(&filename) {
+                            // Check that the filename doesn't start with a dot or slash
+                            let first_char = filename.chars().next().unwrap();
+                            if first_char != '.' && first_char != '\\' && first_char != '/' {
+                                textures.push(filename);
+                            }
                         }
                     }
                 }
+                
+                // Move past this extension
+                i += ext_len;
+            } else {
+                i += 1;
             }
-            
-            i = end + 1;
-        } else {
-            i += 1;
         }
     }
     
