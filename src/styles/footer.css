@@ -1,0 +1,40 @@
+/* Footer */
+.app-footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  padding: 20px 32px;
+  text-align: center;
+  color: var(--neutral);
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+}
+
+.app-footer p {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.app-footer strong {
+  color: var(--text);
+}
+
+.github-link {
+  color: var(--neutral);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s;
+}
+
+.github-link:hover {
+  color: var(--accent);
+}
+
+.github-link svg {
+  vertical-align: middle;
+}

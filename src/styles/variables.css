@@ -1,0 +1,22 @@
+/* Color Variables */
+:root {
+  --primary: #f1f3e0;
+  --secondary: #d2dcb6;
+  --accent: #a1bc98;
+  --neutral: #778873;
+  --text: #2c3e2f;
+  --border: #c5d4b8;
+  --shadow: rgba(119, 136, 115, 0.15);
+  --error: #d64545;
+  --success: #4caf50;
+}
+
+[data-theme="dark"] {
+  --primary: #1a1f1a;
+  --secondary: #2a3528;
+  --accent: #6b8a62;
+  --neutral: #9baa97;
+  --text: #e8f0e6;
+  --border: #3d4a3b;
+  --shadow: rgba(0, 0, 0, 0.3);
+}
