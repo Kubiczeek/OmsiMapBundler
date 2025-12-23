@@ -1,0 +1,80 @@
+/* Compression Selector */
+.compression-selector {
+  position: relative;
+}
+
+.compression-toggle {
+  width: 100%;
+  background-color: var(--primary);
+  border: 2px solid var(--border);
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  text-align: left;
+  font-family: inherit;
+}
+
+.compression-toggle:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.compression-toggle .compression-current {
+  flex: 1;
+}
+
+.compression-toggle .chevron {
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.compression-selector.open .chevron {
+  transform: rotate(180deg);
+}
+
+.compression-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background-color: var(--primary);
+  border: 2px solid var(--border);
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 4px 12px var(--shadow);
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.compression-selector.open .compression-dropdown {
+  display: flex;
+}
+
+.compression-option {
+  background: transparent;
+  border: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--text);
+  text-align: left;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.compression-option:hover {
+  background-color: var(--secondary);
+}
+
+.compression-option.active {
+  background-color: var(--accent);
+  color: white;
+  font-weight: 600;
+}

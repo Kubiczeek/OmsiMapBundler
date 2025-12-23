@@ -34,12 +34,25 @@ pub fn copy_dir_all(src: &Path, dest: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-// Helper function to create ZIP from directory
-pub fn create_zip(src_dir: &Path, dest_file: &Path) -> std::io::Result<()> {
+// Helper function to create ZIP from directory with configurable compression
+pub fn create_zip(
+    src_dir: &Path,
+    dest_file: &Path,
+    compression_method: &str,
+    compression_level: u8,
+) -> std::io::Result<()> {
     let file = File::create(dest_file)?;
     let mut zip = ZipWriter::new(file);
-    let options = SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
+    let level = compression_level.min(9); // clamp to zip allowed range
+
+    let base_options = match compression_method.to_lowercase().as_str() {
+        "stored" => SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .compression_level(None),
+        _ => SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Deflated)
+            .compression_level(Some(level as i64)),
+    };
     
     for entry in WalkDir::new(src_dir).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
@@ -49,11 +62,11 @@ pub fn create_zip(src_dir: &Path, dest_file: &Path) -> std::io::Result<()> {
         let name_str = name.to_string_lossy().replace('\\', "/");
         
         if path.is_file() {
-            zip.start_file(&name_str, options)?;
+            zip.start_file(&name_str, base_options)?;
             let mut f = File::open(path)?;
             std::io::copy(&mut f, &mut zip)?;
         } else if !name.as_os_str().is_empty() {
-            zip.add_directory(&name_str, options)?;
+            zip.add_directory(&name_str, base_options)?;
         }
     }
     

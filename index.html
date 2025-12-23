@@ -11,7 +11,10 @@
 
 <body>
   <div class="app-header">
-    <h1 class="app-title">OMSI Map Bundler</h1>
+    <div class="title-container">
+      <h1 class="app-title">OMSI Map Bundler</h1>
+      <span class="app-version">v1.0.0</span>
+    </div>
     <div class="header-controls">
       <div class="language-switcher">
         <button class="lang-toggle" id="lang-toggle" title="Change language">
@@ -132,9 +135,40 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="zip-name" data-i18n="zipName">ZIP Name (Optional)</label>
-        <input type="text" id="zip-name" placeholder="my-map-bundle" data-i18n-placeholder="zipNamePlaceholder">
+      <div class="form-group two-cols">
+        <div class="form-col">
+          <label for="zip-name" data-i18n="zipName">ZIP Name (Optional)</label>
+          <input type="text" id="zip-name" placeholder="my-map-bundle" data-i18n-placeholder="zipNamePlaceholder">
+        </div>
+
+        <div class="form-col">
+          <label data-i18n="compressionLabel">Compression</label>
+          <div class="compression-selector">
+            <button class="compression-toggle" id="compression-toggle" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span class="compression-current" id="compression-current" data-i18n="compressionBalanced">Balanced
+                (Deflate level 6)</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                class="chevron">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </button>
+            <div class="compression-dropdown" id="compression-dropdown">
+              <button class="compression-option" data-value="none" data-i18n="compressionNone" type="button">No
+                compression (fastest, largest)</button>
+              <button class="compression-option" data-value="fast" data-i18n="compressionFast" type="button">Fast
+                (Deflate level 1)</button>
+              <button class="compression-option active" data-value="balanced" data-i18n="compressionBalanced"
+                type="button">Balanced (Deflate level 6)</button>
+              <button class="compression-option" data-value="max" data-i18n="compressionMax" type="button">Max (Deflate
+                level 9, slowest)</button>
+            </div>
+          </div>
+        </div>
       </div>
 
       <button class="btn-primary" id="bundle-btn">
@@ -147,12 +181,18 @@
       </button>
 
       <div class="status-message" id="status-message"></div>
+      <div class="progress" id="progress-container" aria-live="polite">
+        <div class="progress-bar" id="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="progress-text" id="progress-text"></div>
+      </div>
     </div>
   </main>
 
   <footer class="app-footer">
     <p>
-      OmsiMapBundler© 2025 Created by <strong>Kubiczeek</strong>
+      OmsiMapBundler © 2025 Created by <strong>Kubiczeek</strong>
       •
       <a href="https://github.com/Kubiczeek" target="_blank" rel="noopener noreferrer" class="github-link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">

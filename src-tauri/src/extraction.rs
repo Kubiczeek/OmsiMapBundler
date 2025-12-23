@@ -17,6 +17,8 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     let mut humans = HashSet::new();
     let mut vehicles = HashSet::new();
     let mut tile_maps = Vec::new();
+    let mut money_systems = HashSet::new();
+    let mut ticket_packs = HashSet::new();
     
     println!("Starting dependency extraction from: {}", map_folder);
     
@@ -67,6 +69,26 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                                 if detail_path.ends_with(".bmp") {
                                     lines_iter.next();
                                     textures.insert(detail_path.to_string());
+                                }
+                            }
+                        }
+
+                        // Extract money system
+                        if trimmed == "[moneysystem]" {
+                            if let Some(money_line) = lines_iter.next() {
+                                let money_path = money_line.trim();
+                                if !money_path.is_empty() {
+                                    money_systems.insert(money_path.to_string());
+                                }
+                            }
+                        }
+
+                        // Extract ticket pack
+                        if trimmed == "[ticketpack]" {
+                            if let Some(ticket_line) = lines_iter.next() {
+                                let ticket_path = ticket_line.trim();
+                                if !ticket_path.is_empty() {
+                                    ticket_packs.insert(ticket_path.to_string());
                                 }
                             }
                         }
@@ -249,6 +271,8 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     println!("  - {} textures", textures.len());
     println!("  - {} humans", humans.len());
     println!("  - {} vehicles", vehicles.len());
+    println!("  - {} money systems", money_systems.len());
+    println!("  - {} ticket packs", ticket_packs.len());
     
     DependencyResult {
         sceneryobjects: sceneryobjects.into_iter().collect(),
@@ -256,6 +280,8 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
         textures: textures.into_iter().collect(),
         humans: humans.into_iter().collect(),
         vehicles: vehicles.into_iter().collect(),
+        money_systems: money_systems.into_iter().collect(),
+        ticket_packs: ticket_packs.into_iter().collect(),
         tile_maps,
         error: None,
     }

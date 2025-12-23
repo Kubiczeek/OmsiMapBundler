@@ -12,6 +12,8 @@ export interface DependencyResult {
   textures: string[];
   humans: string[];
   vehicles: string[];
+  money_systems: string[];
+  ticket_packs: string[];
   tile_maps: string[];
   error?: string;
 }
@@ -21,6 +23,8 @@ export interface BundleRequest {
   output_folder?: string;
   zip_name?: string;
   readme_path?: string;
+  compression_method?: string;
+  compression_level?: number;
 }
 
 export interface BundleResult {

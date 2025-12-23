@@ -62,5 +62,26 @@ input[type="text"]::placeholder {
 
 input[type="text"]:read-only {
   background-color: var(--secondary);
-  cursor: default;
+  cursor: not-allowed;
+}
+
+/* Two Column Layout */
+.form-group.two-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-col label {
+  margin-bottom: 8px;
+}
+
+.form-col input[type="text"],
+.form-col .compression-selector {
+  width: 100%;
 }

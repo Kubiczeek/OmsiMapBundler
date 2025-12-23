@@ -9,11 +9,26 @@
   box-shadow: 0 2px 8px var(--shadow);
 }
 
+.title-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .app-title {
   font-size: 24px;
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.5px;
+}
+
+.app-version {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--neutral);
+  padding: 4px 10px;
+  background-color: var(--primary);
+  border: 1px solid var(--border);
 }
 
 .header-controls {

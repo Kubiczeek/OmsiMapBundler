@@ -1,7 +1,13 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { translations } from "./translations";
-import type { ValidationResult, DependencyResult, BundleRequest, BundleResult } from "./types";
+import type {
+  ValidationResult,
+  DependencyResult,
+  BundleRequest,
+  BundleResult,
+} from "./types";
 
 let currentLang = "en";
 
@@ -19,6 +25,51 @@ const outputFolderInput = document.getElementById(
   "output-folder"
 ) as HTMLInputElement;
 const zipNameInput = document.getElementById("zip-name") as HTMLInputElement;
+const compressionToggle = document.getElementById(
+  "compression-toggle"
+) as HTMLButtonElement;
+const compressionCurrent = document.getElementById(
+  "compression-current"
+) as HTMLSpanElement;
+const compressionDropdown = document.getElementById(
+  "compression-dropdown"
+) as HTMLDivElement;
+const compressionSelector = document.querySelector(
+  ".compression-selector"
+) as HTMLDivElement;
+const progressContainer = document.getElementById(
+  "progress-container"
+) as HTMLDivElement;
+const progressFill = document.getElementById("progress-fill") as HTMLDivElement;
+const progressText = document.getElementById("progress-text") as HTMLDivElement;
+
+interface ProgressPayload {
+  message: string;
+  progress: number;
+}
+
+// Get current compression value from active option
+function getCurrentCompression(): string {
+  const activeOption = compressionDropdown?.querySelector(
+    ".compression-option.active"
+  ) as HTMLButtonElement;
+  return activeOption?.dataset.value || "fast";
+}
+
+// Set compression value and update UI
+function setCompressionValue(value: string): void {
+  const options = compressionDropdown?.querySelectorAll(".compression-option");
+  options?.forEach((option) => {
+    const btn = option as HTMLButtonElement;
+    if (btn.dataset.value === value) {
+      btn.classList.add("active");
+      compressionCurrent.textContent = btn.textContent || "";
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+}
+
 const bundleBtn = document.getElementById("bundle-btn") as HTMLButtonElement;
 const statusMessage = document.getElementById(
   "status-message"
@@ -97,6 +148,7 @@ bundleBtn?.addEventListener("click", async () => {
   try {
     bundleBtn.disabled = true;
     showStatus(translations[currentLang].validatingMap, "processing");
+    setProgress(0.02, translations[currentLang].processing);
 
     // Validate map folder
     const validation = await invoke<ValidationResult>("validate_map_folder", {
@@ -121,6 +173,7 @@ bundleBtn?.addEventListener("click", async () => {
     }
 
     showStatus(translations[currentLang].processing, "processing");
+    setProgress(0.08, translations[currentLang].processing);
 
     // Extract all dependencies
     console.log("Extracting dependencies from map folder...");
@@ -164,6 +217,7 @@ bundleBtn?.addEventListener("click", async () => {
       readme_path: readmePath || undefined,
       output_folder: outputFolderPath || undefined,
       zip_name: zipNameInput.value || undefined,
+      ...mapCompression(getCurrentCompression()),
     };
 
     console.log("Creating bundle with parameters:", bundleRequest);
@@ -179,6 +233,7 @@ bundleBtn?.addEventListener("click", async () => {
         }`,
         "success"
       );
+      setProgress(1, translations[currentLang].successBundle);
     } else {
       showStatus(
         `${translations[currentLang].errorBundle}: ${
@@ -186,9 +241,11 @@ bundleBtn?.addEventListener("click", async () => {
         }`,
         "error"
       );
+      setProgress(0, "");
     }
   } catch (error) {
     showStatus(`${translations[currentLang].errorBundle}: ${error}`, "error");
+    setProgress(0, "");
   } finally {
     bundleBtn.disabled = false;
   }
@@ -292,6 +349,26 @@ function updateLanguage() {
       (el as HTMLInputElement).placeholder = translations[currentLang][key];
     }
   });
+
+  // Update compression dropdown options text
+  const currentValue = getCurrentCompression();
+  compressionDropdown
+    ?.querySelectorAll(".compression-option")
+    .forEach((option) => {
+      const btn = option as HTMLButtonElement;
+      const value = btn.dataset.value;
+      if (value) {
+        const key = `compression${
+          value.charAt(0).toUpperCase() + value.slice(1)
+        }`;
+        if (translations[currentLang][key]) {
+          btn.textContent = translations[currentLang][key];
+          if (value === currentValue) {
+            compressionCurrent.textContent = translations[currentLang][key];
+          }
+        }
+      }
+    });
 }
 
 // Show Status
@@ -320,6 +397,36 @@ function showStatus(
   }
 }
 
+function mapCompression(value: string | undefined) {
+  switch (value) {
+    case "none":
+      return { compression_method: "stored", compression_level: 0 };
+    case "fast":
+      return { compression_method: "deflate", compression_level: 1 };
+    case "balanced":
+      return { compression_method: "deflate", compression_level: 6 };
+    case "max":
+      return { compression_method: "deflate", compression_level: 9 };
+    default:
+      return { compression_method: "deflate", compression_level: 1 };
+  }
+}
+
+function setProgress(progress: number, message: string) {
+  if (!progressContainer || !progressFill || !progressText) return;
+
+  const clamped = Math.max(0, Math.min(progress, 1));
+  progressContainer.classList.add("visible");
+  progressFill.style.width = `${Math.round(clamped * 100)}%`;
+  progressText.textContent = `${Math.round(clamped * 100)}% — ${message}`;
+
+  if (clamped === 0 || !message) {
+    progressContainer.classList.remove("visible");
+    progressFill.style.width = "0%";
+    progressText.textContent = "";
+  }
+}
+
 // Initialize
 window.addEventListener("DOMContentLoaded", () => {
   // Load saved theme
@@ -330,6 +437,16 @@ window.addEventListener("DOMContentLoaded", () => {
   const savedLang = localStorage.getItem("lang") || "en";
   currentLang = savedLang;
   updateLanguage();
+
+  // Load saved compression preference
+  const savedCompression = localStorage.getItem("compression") || "balanced";
+  setCompressionValue(savedCompression);
+
+  // Listen for backend progress events
+  listen<ProgressPayload>("bundle-progress", (event) => {
+    const { message, progress } = event.payload;
+    setProgress(progress, message);
+  });
 
   // Set active language option in dropdown
   document
@@ -352,6 +469,34 @@ window.addEventListener("DOMContentLoaded", () => {
   if (!hasVisited) {
     infoModal?.classList.add("visible");
     localStorage.setItem("hasVisited", "true");
+  }
+});
+
+// Compression Dropdown Toggle
+compressionToggle?.addEventListener("click", (e) => {
+  e.stopPropagation();
+  compressionSelector?.classList.toggle("open");
+});
+
+// Compression Option Selection
+compressionDropdown
+  ?.querySelectorAll(".compression-option")
+  .forEach((option) => {
+    option.addEventListener("click", () => {
+      const btn = option as HTMLButtonElement;
+      const value = btn.dataset.value;
+      if (value) {
+        setCompressionValue(value);
+        localStorage.setItem("compression", value);
+        compressionSelector?.classList.remove("open");
+      }
+    });
+  });
+
+// Close compression dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  if (!compressionSelector?.contains(e.target as Node)) {
+    compressionSelector?.classList.remove("open");
   }
 });
 

@@ -4,10 +4,19 @@ use std::collections::HashSet;
 use crate::types::{BundleRequest, BundleResult};
 use crate::extraction::extract_dependencies;
 use crate::utils::{copy_file_with_folders, copy_dir_all, create_zip};
+use std::sync::Arc;
+
+pub type ProgressCallback = Box<dyn Fn(&str, f32) + Send + Sync>;
+
+fn emit_progress(cb: &Option<Arc<ProgressCallback>>, message: &str, progress: f32) {
+    if let Some(cb) = cb {
+        cb(message, progress.clamp(0.0, 1.0));
+    }
+}
 use crate::dependencies;
 
 // Create the bundle ZIP file with all dependencies
-pub fn create_bundle(request: BundleRequest) -> BundleResult {
+pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCallback>>) -> BundleResult {
     let map_path = Path::new(&request.map_folder);
     
     // Find OMSI 2 root folder (should be 2 levels up from map folder: OMSI 2/maps/mapname)
@@ -33,6 +42,7 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
     };
     
     // Extract dependencies first
+    emit_progress(&progress_cb, "Extracting dependencies", 0.05);
     let deps = extract_dependencies(request.map_folder.clone());
     if let Some(err) = deps.error {
         return BundleResult {
@@ -41,6 +51,7 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
             error: Some(format!("Failed to extract dependencies: {}", err)),
         };
     }
+    emit_progress(&progress_cb, "Dependencies extracted", 0.1);
     
     // Create temp folder
     let temp_dir = std::env::temp_dir().join(format!("omsi_bundle_{}", map_name));
@@ -76,6 +87,7 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
     println!("Extracting nested dependencies for vehicles...");
     let vehicle_deps = dependencies::extract_nested_dependencies(&deps.vehicles, "vehicle", omsi_root);
     println!("Found {} nested vehicle dependencies", vehicle_deps.len());
+    emit_progress(&progress_cb, "Resolving nested dependencies", 0.25);
     
     // Separate folders from files
     let mut folders_to_copy = HashSet::new();
@@ -85,7 +97,9 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
         .chain(spline_deps.iter())
         .chain(human_deps.iter())
         .chain(vehicle_deps.iter())
-        .chain(deps.textures.iter()) {
+        .chain(deps.textures.iter())
+        .chain(deps.money_systems.iter())
+        .chain(deps.ticket_packs.iter()) {
         
         if dep.starts_with("FOLDER:") {
             // This is a folder marker - extract the actual path
@@ -95,11 +109,26 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
             files_to_copy.insert(dep.clone());
         }
     }
+
+    // Ensure money systems and ticket packs copy their whole folder
+    for money_path in &deps.money_systems {
+        if let Some(parent) = Path::new(money_path).parent() {
+            folders_to_copy.insert(parent.to_string_lossy().to_string());
+        }
+        files_to_copy.insert(money_path.clone());
+    }
+
+    for ticket_path in &deps.ticket_packs {
+        if let Some(parent) = Path::new(ticket_path).parent() {
+            folders_to_copy.insert(parent.to_string_lossy().to_string());
+        }
+        files_to_copy.insert(ticket_path.clone());
+    }
     
-    // Copy all files
+    // Copy all files with progress
     let mut copied_files = 0;
     let mut failed_files = Vec::new();
-    
+    let total_files = files_to_copy.len().max(1);
     for file_path in &files_to_copy {
         let src = omsi_root.join(file_path);
         let dest = temp_dir.join(file_path);
@@ -109,10 +138,16 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
         } else {
             copied_files += 1;
         }
+
+        if copied_files % 25 == 0 || copied_files == files_to_copy.len() {
+            let pct = 0.25 + 0.55 * (copied_files as f32 / total_files as f32);
+            emit_progress(&progress_cb, "Copying files", pct);
+        }
     }
     
-    // Copy all folders
+    // Copy all folders with progress
     let mut copied_folders = 0;
+    let total_folders = folders_to_copy.len().max(1);
     println!("Preparing to copy {} vehicle folders...", folders_to_copy.len());
     for folder_path in &folders_to_copy {
         println!("  Copying vehicle folder: {}", folder_path);
@@ -126,6 +161,11 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
             } else {
                 println!("Warning: Failed to copy vehicle folder: {}", folder_path);
             }
+        }
+
+        if copied_folders % 5 == 0 || copied_folders == folders_to_copy.len() {
+            let pct = 0.8 + 0.1 * (copied_folders as f32 / total_folders as f32);
+            emit_progress(&progress_cb, "Copying folders", pct);
         }
     }
     
@@ -154,6 +194,7 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
     }
     
     println!("Copied map folder to temp");
+    emit_progress(&progress_cb, "Copied map folder", 0.92);
     
     // Copy README if specified
     if let Some(readme_path) = request.readme_path {
@@ -181,13 +222,25 @@ pub fn create_bundle(request: BundleRequest) -> BundleResult {
         map_path.join(&zip_name)
     };
     
-    println!("Creating ZIP: {:?}", output_path);
+    let compression_method = request
+        .compression_method
+        .as_deref()
+        .unwrap_or("deflate")
+        .to_lowercase();
+    let compression_level = request.compression_level.unwrap_or(1);
+
+    println!(
+        "Creating ZIP: {:?} (method: {}, level: {})",
+        output_path, compression_method, compression_level
+    );
+    emit_progress(&progress_cb, "Creating ZIP", 0.94);
     
     // Create ZIP file
-    match create_zip(&temp_dir, &output_path) {
+    match create_zip(&temp_dir, &output_path, &compression_method, compression_level) {
         Ok(_) => {
             // Clean up temp folder
             let _ = fs::remove_dir_all(&temp_dir);
+            emit_progress(&progress_cb, "Finished", 1.0);
             
             BundleResult {
                 success: true,
