@@ -45,12 +45,17 @@ export const translations: Record<string, Record<string, string>> = {
     disclaimerText:
       'This tool is provided "as is" without warranty of any kind. Always backup your files before using this tool. The author is not responsible for any loss of data or damages that may occur from using this software. Always check the bundled files before distribution.',
     changelogTitle: "Changelog",
-    changelogInitialRelease: "Initial release of OMSI Map Bundler",
-    changelogFeature1:
+    changelog_v1_0_0_item1: "Initial release of OMSI Map Bundler",
+    changelog_v1_0_0_item2:
       "Automatic dependency detection (Sceneryobjects, Splines, Textures)",
-    changelogFeature2: "Vehicle and Train dependency support",
-    changelogFeature3: "Multi-threaded compression for faster bundling",
-    changelogFeature4: "Modern and user-friendly interface",
+    changelog_v1_0_0_item3: "Vehicle and Train dependency support",
+    changelog_v1_0_0_item4: "Multi-threaded compression for faster bundling",
+    changelog_v1_0_0_item5: "Modern and user-friendly interface",
+    changelog_v1_0_1_item1:
+      "Fixed: Detection of [splineAttachment] and [spline_h] formats",
+    changelog_v1_0_1_item2:
+      "Fixed: Texture loading from global.cfg (second texture was not always loaded)",
+    changelog_v1_0_1_item3: "Added: Debug logging options for developers",
   },
   cs: {
     mapFolder: "Složka s Mapou",
@@ -96,12 +101,17 @@ export const translations: Record<string, Record<string, string>> = {
     disclaimerText:
       'Tento nástroj je poskytován "jak je" bez jakékoli záruky. Vždy si před použitím zálohujte své soubory. Autor nenese odpovědnost za ztrátu dat nebo škody, které mohou vzniknout používáním tohoto softwaru. Před distribucí vždy zkontrolujte výsledný balíček.',
     changelogTitle: "Seznam změn",
-    changelogInitialRelease: "První vydání OMSI Map Bundler",
-    changelogFeature1:
+    changelog_v1_0_0_item1: "První vydání OMSI Map Bundler",
+    changelog_v1_0_0_item2:
       "Automatická detekce závislostí (Sceneryobjects, Splines, Textury)",
-    changelogFeature2: "Podpora závislostí vozidel a vlaků",
-    changelogFeature3: "Vícevláknová komprese pro rychlejší balení",
-    changelogFeature4: "Moderní a uživatelsky přívětivé rozhraní",
+    changelog_v1_0_0_item3: "Podpora závislostí vozidel a vlaků",
+    changelog_v1_0_0_item4: "Vícevláknová komprese pro rychlejší balení",
+    changelog_v1_0_0_item5: "Moderní a uživatelsky přívětivé rozhraní",
+    changelog_v1_0_1_item1:
+      "Opraveno: Detekce formátů [splineAttachment] a [spline_h]",
+    changelog_v1_0_1_item2:
+      "Opraveno: Načítání textur z global.cfg (druhá textura se ne vždy načetla)",
+    changelog_v1_0_1_item3: "Přidáno: Debug logování pro vývojáře",
   },
   de: {
     mapFolder: "Karten-Ordner",
@@ -148,11 +158,17 @@ export const translations: Record<string, Record<string, string>> = {
     disclaimerText:
       'Dieses Tool wird "wie besehen" ohne jegliche Garantie bereitgestellt. Sichern Sie immer Ihre Dateien, bevor Sie dieses Tool verwenden. Der Autor ist nicht verantwortlich für Datenverluste oder Schäden, die durch die Verwendung dieser Software entstehen können. Überprüfen Sie das gebündelte Paket vor der Verteilung stets.',
     changelogTitle: "Änderungsprotokoll",
-    changelogInitialRelease: "Erstveröffentlichung von OMSI Map Bundler",
-    changelogFeature1:
-      "Automatische Abhängigkeitserkennung (Sceneryobjects, Splines, Texturen)",
-    changelogFeature2: "Unterstützung für Fahrzeug- und Zugabhängigkeiten",
-    changelogFeature3: "Multithread-Komprimierung für schnelleres Bündeln",
-    changelogFeature4: "Moderne und benutzerfreundliche Oberfläche",
+    changelog_v1_0_0_item1: "Erste Veröffentlichung von OMSI Map Bundler",
+    changelog_v1_0_0_item2:
+      "Automatische Erkennung von Abhängigkeiten (Sceneryobjects, Splines, Texturen)",
+    changelog_v1_0_0_item3: "Unterstützung für Fahrzeug- und Zugabhängigkeiten",
+    changelog_v1_0_0_item4: "Mehrfädige Komprimierung für schnelleres Bündeln",
+    changelog_v1_0_0_item5: "Moderne und benutzerfreundliche Oberfläche",
+    changelog_v1_0_1_item1:
+      "Behoben: Erkennung von [splineAttachment] und [spline_h] Formaten",
+    changelog_v1_0_1_item2:
+      "Behoben: Textur-Laden aus global.cfg (zweite Textur wurde nicht immer geladen)",
+    changelog_v1_0_1_item3:
+      "Hinzugefügt: Debug-Protokollierungsoptionen für Entwickler",
   },
 };
