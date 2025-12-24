@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::fs;
 use std::fs::File;
-use std::io::Read;
+use std::io::{Read, Write, BufWriter};
 use std::collections::HashSet;
 use encoding_rs::UTF_16LE;
 use encoding_rs_io::DecodeReaderBytesBuilder;
@@ -60,6 +60,9 @@ fn check_seasonal_variants(tex_path: &str, omsi_root: &Path, textures: &mut Hash
 
 // Extract all dependencies from map files
 pub fn extract_dependencies(map_folder: String) -> DependencyResult {
+    // Debug logging toggle - set to true to enable detailed debug logs
+    const DEBUG_LOGGING: bool = false;
+    
     let path = Path::new(&map_folder);
     let omsi_root = path.parent().and_then(|p| p.parent());
     
@@ -71,6 +74,26 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     let mut tile_maps = Vec::new();
     let mut money_systems = HashSet::new();
     let mut ticket_packs = HashSet::new();
+    
+    // Create debug log file (only if DEBUG_LOGGING is enabled)
+    let debug_log_path = path.join("bundle_debug.log");
+    let mut debug_log = if DEBUG_LOGGING {
+        match File::create(&debug_log_path) {
+            Ok(file) => Some(BufWriter::new(file)),
+            Err(e) => {
+                println!("Warning: Could not create debug log: {}", e);
+                None
+            }
+        }
+    } else {
+        None
+    };
+    
+    if let Some(ref mut log) = debug_log {
+        let _ = writeln!(log, "=== OMSI Map Bundler Debug Log ===");
+        let _ = writeln!(log, "Map folder: {}", map_folder);
+        let _ = writeln!(log, "OMSI root: {:?}\n", omsi_root);
+    }
     
     println!("Starting dependency extraction from: {}", map_folder);
     
@@ -107,8 +130,9 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                             }
                         }
                         
-                        // Extract ground textures - format is [groundtex] then texture path
+                        // Extract ground textures - format is [groundtex] then 2 texture paths
                         if trimmed == "[groundtex]" {
+                            // Read first texture (main texture)
                             if let Some(tex_line) = lines_iter.next() {
                                 let tex_path = tex_line.trim();
                                 let lower_tex = tex_path.to_lowercase();
@@ -123,14 +147,14 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                                     }
                                 }
                             }
-                            // There might be a detail texture on the next line
-                            if let Some(detail_line) = lines_iter.peek() {
+                            
+                            // Read second texture (detail/normal texture) - always present in [groundtex]
+                            if let Some(detail_line) = lines_iter.next() {
                                 let detail_path = detail_line.trim();
                                 let lower_detail = detail_path.to_lowercase();
                                 if lower_detail.ends_with(".bmp") || lower_detail.ends_with(".jpg") || 
                                    lower_detail.ends_with(".jpeg") || lower_detail.ends_with(".png") || 
                                    lower_detail.ends_with(".dds") || lower_detail.ends_with(".tga") {
-                                    lines_iter.next();
                                     
                                     // Add texture with .cfg, .surf variants and seasonal variants
                                     if let Some(root) = omsi_root {
@@ -185,29 +209,42 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                 
                 match decoder.read_to_string(&mut tile_content) {
                     Ok(_) => {
+                        // Write tile content to debug log
+                        if let Some(ref mut log) = debug_log {
+                            let _ = writeln!(log, "\n=== TILE: {} ===", tile);
+                            let _ = writeln!(log, "{}", tile_content);
+                            let _ = writeln!(log, "=== END TILE ===\n");
+                        }
+                        
                         let mut lines = tile_content.lines();
                     
                         while let Some(line) = lines.next() {
                             let trimmed = line.trim();
                             
                             // Extract splines - format: [spline] -> number -> path -> ...
-                            if trimmed == "[spline]" {
+                            if trimmed == "[spline]" || trimmed == "[spline_h]" {
                                 lines.next(); // Skip number line
                                 if let Some(path_line) = lines.next() {
                                     let path = path_line.trim();
                                     if path.ends_with(".sli") {
                                         splines.insert(path.to_string());
+                                    } else {
+                                        println!("Warning: Spline path does not end with .sli: {}", path);
+                                        println!("Map tile: {}", tile);
                                     }
                                 }
                             }
                             
                             // Extract objects - format: [object] -> number -> path -> ...
-                            if trimmed == "[object]" {
+                            if trimmed == "[object]" || trimmed == "[splineAttachement]" {
                                 lines.next(); // Skip number line
                                 if let Some(path_line) = lines.next() {
                                     let path = path_line.trim();
                                     if path.ends_with(".sco") {
                                         sceneryobjects.insert(path.to_string());
+                                    } else {
+                                        println!("Warning: Object path does not end with .sco: {}", path);
+                                        println!("Map tile: {}", tile);
                                     }
                                 }
                             }
@@ -245,27 +282,40 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                                         let mut map_content = String::new();
                                         
                                         if decoder.read_to_string(&mut map_content).is_ok() {
+                                            // Write chrono tile content to debug log
+                                            if let Some(ref mut log) = debug_log {
+                                                let _ = writeln!(log, "\n=== CHRONO TILE: {} ===", map_file_path.display());
+                                                let _ = writeln!(log, "{}", map_content);
+                                                let _ = writeln!(log, "=== END CHRONO TILE ===\n");
+                                            }
+                                            
                                             let mut lines = map_content.lines();
                                             
                                             while let Some(line) = lines.next() {
                                                 let trimmed = line.trim();
                                                 
-                                                if trimmed == "[spline]" {
+                                                if trimmed == "[spline]" || trimmed == "[spline_h]" {
                                                     lines.next();
                                                     if let Some(path_line) = lines.next() {
                                                         let path = path_line.trim();
                                                         if path.ends_with(".sli") {
                                                             splines.insert(path.to_string());
+                                                        } else {
+                                                            println!("Warning: Spline path does not end with .sli: {}", path);
+                                                            println!("Map tile: {}", map_entry.path().display());
                                                         }
                                                     }
                                                 }
                                                 
-                                                if trimmed == "[object]" {
+                                                if trimmed == "[object]" || trimmed == "[splineAttachement]" {
                                                     lines.next();
                                                     if let Some(path_line) = lines.next() {
                                                         let path = path_line.trim();
                                                         if path.ends_with(".sco") {
                                                             sceneryobjects.insert(path.to_string());
+                                                        } else {
+                                                            println!("Warning: Object path does not end with .sco: {}", path);
+                                                            println!("Map tile: {}", map_entry.path().display());
                                                         }
                                                     }
                                                 }
@@ -377,6 +427,83 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     println!("  - {} vehicles", vehicles.len());
     println!("  - {} money systems", money_systems.len());
     println!("  - {} ticket packs", ticket_packs.len());
+    
+    // Write all found dependencies to debug log
+    if let Some(ref mut log) = debug_log {
+        let _ = writeln!(log, "\n=== FOUND DEPENDENCIES ===");
+        let _ = writeln!(log, "\nTiles checked: {}", tile_maps.len());
+        
+        let _ = writeln!(log, "\n--- SPLINES ({}) ---", splines.len());
+        let mut splines_sorted: Vec<_> = splines.iter().collect();
+        splines_sorted.sort();
+        for spline in &splines_sorted {
+            let _ = writeln!(log, "  {}", spline);
+        }
+        
+        let _ = writeln!(log, "\n--- SCENERYOBJECTS ({}) ---", sceneryobjects.len());
+        let mut scos_sorted: Vec<_> = sceneryobjects.iter().collect();
+        scos_sorted.sort();
+        for sco in &scos_sorted {
+            let _ = writeln!(log, "  {}", sco);
+        }
+        
+        let _ = writeln!(log, "\n--- TEXTURES ({}) ---", textures.len());
+        let mut textures_sorted: Vec<_> = textures.iter().collect();
+        textures_sorted.sort();
+        for tex in &textures_sorted {
+            let _ = writeln!(log, "  {}", tex);
+        }
+        
+        let _ = writeln!(log, "\n--- HUMANS ({}) ---", humans.len());
+        for human in &humans {
+            let _ = writeln!(log, "  {}", human);
+        }
+        
+        let _ = writeln!(log, "\n--- VEHICLES ({}) ---", vehicles.len());
+        for vehicle in &vehicles {
+            let _ = writeln!(log, "  {}", vehicle);
+        }
+        
+        // Check for specific files if debug_expected.txt exists
+        let expected_path = path.join("debug_expected.txt");
+        if expected_path.exists() {
+            let _ = writeln!(log, "\n=== CHECKING EXPECTED FILES ===");
+            if let Ok(expected_content) = fs::read_to_string(&expected_path) {
+                for line in expected_content.lines() {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() || trimmed.starts_with('#') {
+                        continue;
+                    }
+                    
+                    let normalized = trimmed.replace('/', "\\");
+                    let found = splines.contains(&normalized) ||
+                               splines.contains(trimmed) ||
+                               sceneryobjects.contains(&normalized) ||
+                               sceneryobjects.contains(trimmed) ||
+                               textures.contains(&normalized) ||
+                               textures.contains(trimmed);
+                    
+                    if found {
+                        let _ = writeln!(log, "  ✓ FOUND: {}", trimmed);
+                    } else {
+                        let _ = writeln!(log, "  ✗ MISSING: {}", trimmed);
+                        println!("⚠ WARNING: Expected file not found: {}", trimmed);
+                    }
+                }
+            }
+        } else {
+            let _ = writeln!(log, "\n=== TIP ===");
+            let _ = writeln!(log, "Create 'debug_expected.txt' in map folder with list of files to check.");
+            let _ = writeln!(log, "Example content:");
+            let _ = writeln!(log, "  Splines\\Marcel\\Damm1_40m.sli");
+            let _ = writeln!(log, "  Sceneryobjects\\something.sco");
+        }
+        
+        let _ = log.flush();
+        if DEBUG_LOGGING {
+            println!("\nDebug log created: {:?}", debug_log_path);
+        }
+    }
     
     DependencyResult {
         sceneryobjects: sceneryobjects.into_iter().collect(),
