@@ -23,7 +23,12 @@ pub fn extract_nested_dependencies(
                 }
             }
             "sceneryobject" => {
-                if let Some(deps) = sceneryobject::extract_sceneryobject_dependencies(asset_path, omsi_root) {
+                // .ovh files in Sceneryobjects are AI vehicles and need special handling
+                if asset_path.ends_with(".ovh") {
+                    if let Some(deps) = sceneryobject::extract_ovh_dependencies(asset_path, omsi_root) {
+                        all_dependencies.extend(deps);
+                    }
+                } else if let Some(deps) = sceneryobject::extract_sceneryobject_dependencies(asset_path, omsi_root) {
                     all_dependencies.extend(deps);
                 }
             }

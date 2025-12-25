@@ -51,7 +51,7 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
         if trimmed == "[mesh]" {
             if let Some(mesh_line) = lines.next() {
                 let mesh_file = mesh_line.trim();
-                if !mesh_file.is_empty() && mesh_file.ends_with(".o3d") {
+                if !mesh_file.is_empty() && (mesh_file.ends_with(".o3d") || mesh_file.ends_with(".x")) {
                     // Try multiple locations for the mesh file
                     // Option 1: relative to sco folder + model subfolder
                     let option1 = sco_folder.join("model").join(mesh_file);
@@ -74,9 +74,70 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
                     
                     dependencies.insert(mesh_path.clone());
                     
-                    // Extract textures embedded in .o3d file
-                    if let Some(o3d_textures) = extract_o3d_textures(&mesh_path, omsi_root) {
-                        for tex_name in o3d_textures {
+                    // Extract textures embedded in mesh files
+                    let mesh_textures = if mesh_file.ends_with(".o3d") {
+                        extract_o3d_textures(&mesh_path, omsi_root)
+                    } else if mesh_file.ends_with(".x") {
+                        extract_x_textures(&mesh_path, omsi_root)
+                    } else {
+                        None
+                    };
+                    
+                    if let Some(textures) = mesh_textures {
+                        for tex_name in textures {
+                            // Get base name without extension
+                            let base_name = if let Some(pos) = tex_name.rfind('.') {
+                                &tex_name[..pos]
+                            } else {
+                                &tex_name
+                            };
+                            
+                            // Find all texture variants
+                            add_texture_variants(base_name, &sco_folder, omsi_root, &mut dependencies);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Extract collision mesh files from [collision_mesh] sections
+        if trimmed == "[collision_mesh]" {
+            if let Some(mesh_line) = lines.next() {
+                let mesh_file = mesh_line.trim();
+                if !mesh_file.is_empty() && (mesh_file.ends_with(".o3d") || mesh_file.ends_with(".x")) {
+                    // Try multiple locations for the mesh file
+                    // Option 1: relative to sco folder + model subfolder
+                    let option1 = sco_folder.join("model").join(mesh_file);
+                    let option1_str = option1.to_string_lossy().replace('/', "\\");
+                    let test1 = omsi_root.join(&option1_str);
+                    
+                    // Option 2: relative to sco folder directly
+                    let option2 = sco_folder.join(mesh_file);
+                    let option2_str = option2.to_string_lossy().replace('/', "\\");
+                    let test2 = omsi_root.join(&option2_str);
+                    
+                    let mesh_path = if test1.exists() {
+                        option1_str.clone()
+                    } else if test2.exists() {
+                        option2_str.clone()
+                    } else {
+                        // Fallback: use as-is
+                        mesh_file.replace('/', "\\")
+                    };
+                    
+                    dependencies.insert(mesh_path.clone());
+                    
+                    // Extract textures embedded in mesh files
+                    let mesh_textures = if mesh_file.ends_with(".o3d") {
+                        extract_o3d_textures(&mesh_path, omsi_root)
+                    } else if mesh_file.ends_with(".x") {
+                        extract_x_textures(&mesh_path, omsi_root)
+                    } else {
+                        None
+                    };
+                    
+                    if let Some(textures) = mesh_textures {
+                        for tex_name in textures {
                             // Get base name without extension
                             let base_name = if let Some(pos) = tex_name.rfind('.') {
                                 &tex_name[..pos]
@@ -126,7 +187,7 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
         if trimmed == "[matl]" || trimmed == "[matl_change]" || trimmed == "[matl_lightmap]" {
             if let Some(tex_line) = lines.next() {
                 let tex_file = tex_line.trim();
-                if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || 
+                if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || tex_file.ends_with(".jpeg") ||
                     tex_file.ends_with(".bmp") || tex_file.ends_with(".dds") || 
                     tex_file.ends_with(".png") || tex_file.ends_with(".tga")) {
                     
@@ -150,7 +211,7 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
             // Following line is the texture path
             if let Some(tex_line) = lines.next() {
                 let tex_file = tex_line.trim();
-                if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || 
+                if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || tex_file.ends_with(".jpeg") ||
                     tex_file.ends_with(".bmp") || tex_file.ends_with(".dds") || 
                     tex_file.ends_with(".png") || tex_file.ends_with(".tga")) {
                     
@@ -165,6 +226,29 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
                     add_texture_variants(base_name, &sco_folder, omsi_root, &mut dependencies);
                 }
             }
+        }
+        
+        // Extract environment map textures from [matl_envmap] sections
+        if trimmed == "[matl_envmap]" {
+            if let Some(tex_line) = lines.next() {
+                let tex_file = tex_line.trim();
+                if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || tex_file.ends_with(".jpeg") ||
+                    tex_file.ends_with(".bmp") || tex_file.ends_with(".dds") || 
+                    tex_file.ends_with(".png") || tex_file.ends_with(".tga")) {
+                    
+                    // Get base name without extension
+                    let base_name = if let Some(pos) = tex_file.rfind('.') {
+                        &tex_file[..pos]
+                    } else {
+                        tex_file
+                    };
+                    
+                    // Find all texture variants
+                    add_texture_variants(base_name, &sco_folder, omsi_root, &mut dependencies);
+                }
+            }
+            // Skip the next line (usually a numeric value like 0.85)
+            lines.next();
         }
         
         // Extract scripts from [script] sections
@@ -186,14 +270,16 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
                     let option2_str = option2.to_string_lossy().replace('/', "\\");
                     let test2 = omsi_root.join(&option2_str);
                     
+                    // Option 3: try as-is path
+                    let option3 = script_file.replace('/', "\\");
+                    let test3 = omsi_root.join(&option3);
+                    
                     if test1.exists() {
                         dependencies.insert(option1_str);
                     } else if test2.exists() {
                         dependencies.insert(option2_str);
-                    } else {
-                        // Fallback: use as-is (might be full path already)
-                        let fallback = script_file.replace('/', "\\");
-                        dependencies.insert(fallback);
+                    } else if test3.exists() {
+                        dependencies.insert(option3);
                     }
                 }
             }
@@ -265,6 +351,37 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
                 }
             }
         }
+        
+        // Extract passenger cabin configs from [passengercabin] sections
+        if trimmed == "[passengercabin]" {
+            if let Some(cabin_line) = lines.next() {
+                let cabin_file = cabin_line.trim();
+                if !cabin_file.is_empty() && cabin_file.ends_with(".cfg") {
+                    // Try multiple locations
+                    // Option 1: relative to sco folder directly
+                    let option1 = sco_folder.join(cabin_file);
+                    let option1_str = option1.to_string_lossy().replace('/', "\\");
+                    let test1 = omsi_root.join(&option1_str);
+                    
+                    // Option 2: relative to sco folder + model subfolder
+                    let option2 = sco_folder.join("model").join(cabin_file);
+                    let option2_str = option2.to_string_lossy().replace('/', "\\");
+                    let test2 = omsi_root.join(&option2_str);
+                    
+                    // Option 3: try as-is path
+                    let option3 = cabin_file.replace('/', "\\");
+                    let test3 = omsi_root.join(&option3);
+                    
+                    if test1.exists() {
+                        dependencies.insert(option1_str);
+                    } else if test2.exists() {
+                        dependencies.insert(option2_str);
+                    } else if test3.exists() {
+                        dependencies.insert(option3);
+                    }
+                }
+            }
+        }
     }
     
     // Additional texture detection: search for textures matching the .sco filename
@@ -272,6 +389,242 @@ pub fn extract_sceneryobject_dependencies(sco_path: &str, omsi_root: &Path) -> O
     if let Some(sco_filename) = Path::new(sco_path).file_stem() {
         if let Some(sco_name) = sco_filename.to_str() {
             search_textures_by_prefix(sco_name, &sco_folder, omsi_root, &mut dependencies);
+        }
+    }
+    
+    Some(dependencies)
+}
+
+/// Extract all dependencies from a .ovh file (AI vehicles in Sceneryobjects)
+/// Returns a set of file paths relative to OMSI root folder
+pub fn extract_ovh_dependencies(ovh_path: &str, omsi_root: &Path) -> Option<HashSet<String>> {
+    let full_ovh_path = omsi_root.join(ovh_path);
+    
+    if !full_ovh_path.exists() {
+        println!("OVH file not found: {:?}", full_ovh_path);
+        return None;
+    }
+    
+    let mut dependencies = HashSet::new();
+    
+    // Add the .ovh file itself
+    dependencies.insert(ovh_path.to_string());
+    
+    // Read .ovh file with Windows-1252 encoding
+    let ovh_content = match File::open(&full_ovh_path) {
+        Ok(file) => {
+            let mut decoder = DecodeReaderBytesBuilder::new()
+                .encoding(Some(WINDOWS_1252))
+                .build(file);
+            let mut content = String::new();
+            match decoder.read_to_string(&mut content) {
+                Ok(_) => content,
+                Err(e) => {
+                    println!("Failed to decode {}: {}", ovh_path, e);
+                    return None;
+                }
+            }
+        }
+        Err(e) => {
+            println!("Failed to open {}: {}", ovh_path, e);
+            return None;
+        }
+    };
+    
+    let ovh_folder = Path::new(ovh_path).parent().unwrap_or(Path::new(""));
+    let mut lines = ovh_content.lines();
+    
+    while let Some(line) = lines.next() {
+        let trimmed = line.trim();
+        
+        // Extract model config from [model] section
+        if trimmed == "[model]" {
+            if let Some(model_line) = lines.next() {
+                let model_file = model_line.trim();
+                if !model_file.is_empty() && model_file.ends_with(".cfg") {
+                    // Try multiple locations for the model file
+                    // Option 1: relative to ovh folder + model subfolder
+                    let option1 = ovh_folder.join("model").join(model_file);
+                    let option1_str = option1.to_string_lossy().replace('/', "\\");
+                    let test1 = omsi_root.join(&option1_str);
+                    
+                    // Option 2: relative to ovh folder directly
+                    let option2 = ovh_folder.join(model_file);
+                    let option2_str = option2.to_string_lossy().replace('/', "\\");
+                    let test2 = omsi_root.join(&option2_str);
+                    
+                    // Option 3: try as-is (might have ..\\ path)
+                    let option3 = model_file.replace('/', "\\");
+                    let test3 = if option3.starts_with("..\\") {
+                        // Resolve relative path from ovh folder
+                        ovh_folder.join(&option3).to_string_lossy().replace('/', "\\")
+                    } else {
+                        option3.clone()
+                    };
+                    let test3_full = omsi_root.join(&test3);
+                    
+                    if test1.exists() {
+                        dependencies.insert(option1_str);
+                    } else if test2.exists() {
+                        dependencies.insert(option2_str);
+                    } else if test3_full.exists() {
+                        dependencies.insert(test3);
+                    }
+                }
+            }
+        }
+        
+        // Extract sound configs from [sound] sections
+        if trimmed == "[sound]" {
+            if let Some(sound_line) = lines.next() {
+                let sound_file = sound_line.trim();
+                if !sound_file.is_empty() && sound_file.ends_with(".cfg") {
+                    // Handle relative paths like ..\..\Sounds\AI_Cars\sound.cfg
+                    let sound_path = if sound_file.starts_with("..\\") || sound_file.starts_with("../") {
+                        ovh_folder.join(sound_file).to_string_lossy().replace('/', "\\")
+                    } else {
+                        let option1 = ovh_folder.join("sound").join(sound_file);
+                        let option1_str = option1.to_string_lossy().replace('/', "\\");
+                        let test1 = omsi_root.join(&option1_str);
+                        
+                        let option2 = ovh_folder.join(sound_file);
+                        let option2_str = option2.to_string_lossy().replace('/', "\\");
+                        let test2 = omsi_root.join(&option2_str);
+                        
+                        if test1.exists() {
+                            option1_str
+                        } else if test2.exists() {
+                            option2_str
+                        } else {
+                            sound_file.replace('/', "\\")
+                        }
+                    };
+                    
+                    let test_sound = omsi_root.join(&sound_path);
+                    if test_sound.exists() {
+                        dependencies.insert(sound_path.clone());
+                        
+                        // Extract nested sound dependencies
+                        if let Some(sound_deps) = extract_sound_config_dependencies(&sound_path, omsi_root) {
+                            dependencies.extend(sound_deps);
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Extract varname lists from [varnamelist] sections
+        if trimmed == "[varnamelist]" {
+            // Next line is count
+            lines.next();
+            // Following lines are the varlist paths (count times)
+            if let Some(count_str) = lines.next() {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    for _ in 0..count {
+                        if let Some(varlist_line) = lines.next() {
+                            let varlist_file = varlist_line.trim();
+                            if !varlist_file.is_empty() && varlist_file.ends_with(".txt") {
+                                // Handle relative paths like ..\..\Scripts\AI_Cars\AI_varlist.txt
+                                let varlist_path = if varlist_file.starts_with("..\\") || varlist_file.starts_with("../") {
+                                    ovh_folder.join(varlist_file).to_string_lossy().replace('/', "\\")
+                                } else {
+                                    let option1 = ovh_folder.join("script").join(varlist_file);
+                                    let option1_str = option1.to_string_lossy().replace('/', "\\");
+                                    let test1 = omsi_root.join(&option1_str);
+                                    
+                                    let option2 = ovh_folder.join(varlist_file);
+                                    let option2_str = option2.to_string_lossy().replace('/', "\\");
+                                    let test2 = omsi_root.join(&option2_str);
+                                    
+                                    if test1.exists() {
+                                        option1_str
+                                    } else if test2.exists() {
+                                        option2_str
+                                    } else {
+                                        varlist_file.replace('/', "\\")
+                                    }
+                                };
+                                
+                                let test_varlist = omsi_root.join(&varlist_path);
+                                if test_varlist.exists() {
+                                    dependencies.insert(varlist_path);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Extract scripts from [script] sections
+        if trimmed == "[script]" {
+            // Next line is count
+            if let Some(count_str) = lines.next() {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    for _ in 0..count {
+                        if let Some(script_line) = lines.next() {
+                            let script_file = script_line.trim();
+                            if !script_file.is_empty() && script_file.ends_with(".osc") {
+                                // Handle relative paths like ..\..\Scripts\AI_Cars\main_AI.osc
+                                let script_path = if script_file.starts_with("..\\") || script_file.starts_with("../") {
+                                    ovh_folder.join(script_file).to_string_lossy().replace('/', "\\")
+                                } else {
+                                    let option1 = ovh_folder.join("script").join(script_file);
+                                    let option1_str = option1.to_string_lossy().replace('/', "\\");
+                                    let test1 = omsi_root.join(&option1_str);
+                                    
+                                    let option2 = ovh_folder.join(script_file);
+                                    let option2_str = option2.to_string_lossy().replace('/', "\\");
+                                    let test2 = omsi_root.join(&option2_str);
+                                    
+                                    if test1.exists() {
+                                        option1_str
+                                    } else if test2.exists() {
+                                        option2_str
+                                    } else {
+                                        script_file.replace('/', "\\")
+                                    }
+                                };
+                                
+                                let test_script = omsi_root.join(&script_path);
+                                if test_script.exists() {
+                                    dependencies.insert(script_path);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Extract const files from [constfile] sections
+        if trimmed == "[constfile]" {
+            // Next line is count
+            if let Some(count_str) = lines.next() {
+                if let Ok(count) = count_str.trim().parse::<usize>() {
+                    for _ in 0..count {
+                        if let Some(const_line) = lines.next() {
+                            let const_file = const_line.trim();
+                            if !const_file.is_empty() && const_file.ends_with(".txt") {
+                                // Try multiple locations
+                                let option1 = ovh_folder.join("script").join(const_file);
+                                let option1_str = option1.to_string_lossy().replace('/', "\\");
+                                let test1 = omsi_root.join(&option1_str);
+                                
+                                let option2 = ovh_folder.join(const_file);
+                                let option2_str = option2.to_string_lossy().replace('/', "\\");
+                                let test2 = omsi_root.join(&option2_str);
+                                
+                                if test1.exists() {
+                                    dependencies.insert(option1_str);
+                                } else if test2.exists() {
+                                    dependencies.insert(option2_str);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -339,7 +692,7 @@ fn extract_sound_config_dependencies(cfg_path: &str, omsi_root: &Path) -> Option
 fn search_textures_by_prefix(prefix: &str, sco_folder: &Path, omsi_root: &Path, dependencies: &mut HashSet<String>) {
     use std::fs;
     
-    let texture_extensions = ["jpg", "bmp", "dds", "png", "tga"];
+    let texture_extensions = ["jpg", "jpeg", "bmp", "dds", "png", "tga"];
     
     // Try multiple texture folder locations
     let search_paths = vec![
@@ -443,7 +796,7 @@ fn search_textures_by_prefix(prefix: &str, sco_folder: &Path, omsi_root: &Path, 
 fn add_texture_variants(base_name: &str, sco_folder: &Path, omsi_root: &Path, dependencies: &mut HashSet<String>) {
     use std::fs;
     
-    let texture_extensions = ["jpg", "bmp", "dds", "png", "tga"];
+    let texture_extensions = ["jpg", "jpeg", "bmp", "dds", "png", "tga"];
     let seasonal_folders = ["night", "Night", "alpha", "Alpha", "winter", "Winter", "WinterSnow", "wintersnow", "spring", "Spring", "fall", "Fall"];
     
     // Try multiple base locations
@@ -644,10 +997,10 @@ fn extract_o3d_textures(o3d_path: &str, omsi_root: &Path) -> Option<Vec<String>>
     }
     
     let mut textures = Vec::new();
-    let texture_extensions = [b".bmp", b".tga", b".dds", b".jpg", b".png", b".BMP", b".TGA", b".DDS", b".JPG", b".PNG"];
+    let texture_extensions: &[&[u8]] = &[b".bmp", b".tga", b".dds", b".jpg", b".jpeg", b".png", b".BMP", b".TGA", b".DDS", b".JPG", b".JPEG", b".PNG"];
     
     // Search for texture file extensions and then go backwards to find the filename
-    for ext in &texture_extensions {
+    for ext in texture_extensions {
         let ext_len = ext.len();
         let mut i = 0;
         
@@ -656,6 +1009,7 @@ fn extract_o3d_textures(o3d_path: &str, omsi_root: &Path) -> Option<Vec<String>>
             if &buffer[i..i + ext_len] == *ext {
                 // Found extension, now go backwards to find the start of the filename
                 let mut start = i;
+                let mut found_valid_chars = false;
                 
                 // Go back while we find valid filename characters
                 while start > 0 {
@@ -668,6 +1022,7 @@ fn extract_o3d_textures(o3d_path: &str, omsi_root: &Path) -> Option<Vec<String>>
                        (c >= b'0' && c <= b'9') ||
                        c == b'_' || c == b'-' || c == b'.' || c == b'\\' || c == b'/' || c == b'#' {
                         start = prev_idx;
+                        found_valid_chars = true;
                     } else {
                         // Found invalid character, stop here
                         break;
@@ -676,14 +1031,171 @@ fn extract_o3d_textures(o3d_path: &str, omsi_root: &Path) -> Option<Vec<String>>
                 
                 // Extract the filename
                 let end = i + ext_len;
-                if end > start && start < buffer.len() {
+                if end > start && start < buffer.len() && found_valid_chars {
                     if let Ok(filename) = String::from_utf8(buffer[start..end].to_vec()) {
+                        // Clean up the filename - remove any leading invalid characters
+                        let cleaned = filename
+                            .chars()
+                            .skip_while(|c| !c.is_alphanumeric() && *c != '_')
+                            .collect::<String>();
+                        
                         // Validate that it looks like a reasonable filename
-                        if filename.len() > ext_len && !textures.contains(&filename) {
-                            // Check that the filename doesn't start with a dot or slash
-                            let first_char = filename.chars().next().unwrap();
-                            if first_char != '.' && first_char != '\\' && first_char != '/' {
-                                textures.push(filename);
+                        // Must have at least one alphanumeric character before the extension
+                        if cleaned.len() > ext_len && !textures.contains(&cleaned) {
+                            let first_char = cleaned.chars().next().unwrap();
+                            if first_char.is_alphanumeric() || first_char == '_' {
+                                textures.push(cleaned);
+                            }
+                        }
+                    }
+                }
+                
+                // Move past this extension
+                i += ext_len;
+            } else {
+                i += 1;
+            }
+        }
+    }
+    
+    if textures.is_empty() {
+        None
+    } else {
+        Some(textures)
+    }
+}
+
+/// Extract texture references from .x (DirectX mesh) file
+fn extract_x_textures(x_path: &str, omsi_root: &Path) -> Option<Vec<String>> {
+    use std::fs;
+    use std::io::Read;
+    
+    let full_x_path = omsi_root.join(x_path);
+    
+    if !full_x_path.exists() {
+        return None;
+    }
+    
+    // Read text file (DirectX .x files can be text-based)
+    let mut file = match fs::File::open(&full_x_path) {
+        Ok(f) => f,
+        Err(_) => return None,
+    };
+    
+    let mut content = String::new();
+    if file.read_to_string(&mut content).is_err() {
+        // If text read fails, try binary mode
+        drop(file);
+        let mut file = match fs::File::open(&full_x_path) {
+            Ok(f) => f,
+            Err(_) => return None,
+        };
+        
+        let mut buffer = Vec::new();
+        if file.read_to_end(&mut buffer).is_err() {
+            return None;
+        }
+        
+        // Try to find texture names in binary content
+        return extract_textures_from_binary(&buffer);
+    }
+    
+    // Parse text-based .x file for texture references
+    let mut textures = Vec::new();
+    
+    // Look for TextureFilename sections in DirectX .x format
+    // Example: TextureFilename { "texture.bmp"; }
+    for line in content.lines() {
+        let trimmed = line.trim();
+        
+        // Check for TextureFilename keyword
+        if trimmed.contains("TextureFilename") {
+            // Extract texture name from quotes
+            if let Some(start) = trimmed.find('"') {
+                if let Some(end) = trimmed[start + 1..].find('"') {
+                    let tex_name = &trimmed[start + 1..start + 1 + end];
+                    if !tex_name.is_empty() && !textures.contains(&tex_name.to_string()) {
+                        // Clean up path separators
+                        let cleaned = tex_name.replace('/', "\\");
+                        // Extract just the filename if it contains path
+                        let filename = if let Some(pos) = cleaned.rfind('\\') {
+                            &cleaned[pos + 1..]
+                        } else {
+                            &cleaned
+                        };
+                        textures.push(filename.to_string());
+                    }
+                }
+            }
+        }
+    }
+    
+    if textures.is_empty() {
+        None
+    } else {
+        Some(textures)
+    }
+}
+
+/// Extract texture names from binary content (used for binary .x files)
+fn extract_textures_from_binary(buffer: &[u8]) -> Option<Vec<String>> {
+    let mut textures = Vec::new();
+    let texture_extensions: &[&[u8]] = &[b".bmp", b".tga", b".dds", b".jpg", b".jpeg", b".png", b".BMP", b".TGA", b".DDS", b".JPG", b".JPEG", b".PNG"];
+    
+    // Search for texture file extensions and then go backwards to find the filename
+    for ext in texture_extensions {
+        let ext_len = ext.len();
+        let mut i = 0;
+        
+        while i + ext_len <= buffer.len() {
+            // Check if we found an extension
+            if &buffer[i..i + ext_len] == *ext {
+                // Found extension, now go backwards to find the start of the filename
+                let mut start = i;
+                let mut found_valid_chars = false;
+                
+                // Go back while we find valid filename characters
+                while start > 0 {
+                    let prev_idx = start - 1;
+                    let c = buffer[prev_idx];
+                    
+                    // Valid filename characters: letters, digits, underscore, hyphen, dot, backslash, forward slash
+                    if (c >= b'A' && c <= b'Z') || 
+                       (c >= b'a' && c <= b'z') ||
+                       (c >= b'0' && c <= b'9') ||
+                       c == b'_' || c == b'-' || c == b'.' || c == b'\\' || c == b'/' || c == b'#' {
+                        start = prev_idx;
+                        found_valid_chars = true;
+                    } else {
+                        // Found invalid character, stop here
+                        break;
+                    }
+                }
+                
+                // Extract the filename
+                let end = i + ext_len;
+                if end > start && start < buffer.len() && found_valid_chars {
+                    if let Ok(filename) = String::from_utf8(buffer[start..end].to_vec()) {
+                        // Clean up the filename - remove any leading invalid characters
+                        let cleaned = filename
+                            .chars()
+                            .skip_while(|c| !c.is_alphanumeric() && *c != '_')
+                            .collect::<String>();
+                        
+                        // Extract just the filename without path
+                        let final_name = if let Some(pos) = cleaned.rfind('\\') {
+                            &cleaned[pos + 1..]
+                        } else if let Some(pos) = cleaned.rfind('/') {
+                            &cleaned[pos + 1..]
+                        } else {
+                            &cleaned
+                        };
+                        
+                        // Validate that it looks like a reasonable filename
+                        if final_name.len() > ext_len && !textures.contains(&final_name.to_string()) {
+                            let first_char = final_name.chars().next().unwrap();
+                            if first_char.is_alphanumeric() || first_char == '_' {
+                                textures.push(final_name.to_string());
                             }
                         }
                     }

@@ -240,10 +240,10 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                                 lines.next(); // Skip number line
                                 if let Some(path_line) = lines.next() {
                                     let path = path_line.trim();
-                                    if path.ends_with(".sco") {
+                                    if path.ends_with(".sco") || path.ends_with(".ovh") {
                                         sceneryobjects.insert(path.to_string());
                                     } else {
-                                        println!("Warning: Object path does not end with .sco: {}", path);
+                                        println!("Warning: Object path does not end with .sco or .ovh: {}", path);
                                         println!("Map tile: {}", tile);
                                     }
                                 }
@@ -311,10 +311,10 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
                                                     lines.next();
                                                     if let Some(path_line) = lines.next() {
                                                         let path = path_line.trim();
-                                                        if path.ends_with(".sco") {
+                                                        if path.ends_with(".sco") || path.ends_with(".ovh") {
                                                             sceneryobjects.insert(path.to_string());
                                                         } else {
-                                                            println!("Warning: Object path does not end with .sco: {}", path);
+                                                            println!("Warning: Object path does not end with .sco or .ovh: {}", path);
                                                             println!("Map tile: {}", map_entry.path().display());
                                                         }
                                                     }
@@ -356,8 +356,8 @@ pub fn extract_dependencies(map_folder: String) -> DependencyResult {
     if let Ok(parklist_content) = fs::read_to_string(path.join("parklist_p.txt")) {
         for line in parklist_content.lines() {
             let trimmed = line.trim();
-            if trimmed.ends_with(".sco") {
-                // Check if this .sco is in Vehicles folder (static vehicle)
+            if trimmed.ends_with(".sco") || trimmed.ends_with(".ovh") {
+                // Check if this .sco/.ovh is in Vehicles folder (static vehicle)
                 let lower_path = trimmed.to_lowercase();
                 if lower_path.starts_with("vehicles\\") || lower_path.starts_with("vehicles/") {
                     vehicles.insert(trimmed.to_string());
