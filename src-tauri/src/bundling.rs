@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 use std::fs;
 use std::collections::HashSet;
 use crate::types::{BundleRequest, BundleResult};
-use crate::extraction::extract_dependencies;
+use crate::phase1_collection;
+use crate::phase2_processing;
 use crate::utils::{copy_file_with_folders, copy_dir_all, create_zip};
 use std::sync::Arc;
 
@@ -13,7 +14,6 @@ fn emit_progress(cb: &Option<Arc<ProgressCallback>>, message: &str, progress: f3
         cb(message, progress.clamp(0.0, 1.0));
     }
 }
-use crate::dependencies;
 
 // Create the bundle ZIP file with all dependencies
 pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCallback>>) -> BundleResult {
@@ -29,8 +29,6 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         }
     };
     
-    println!("OMSI 2 root folder: {:?}", omsi_root);
-    
     // Get map folder name
     let map_name = match map_path.file_name().and_then(|n| n.to_str()) {
         Some(name) => name,
@@ -41,17 +39,19 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         }
     };
     
-    // Extract dependencies first
-    emit_progress(&progress_cb, "Extracting dependencies", 0.05);
-    let deps = extract_dependencies(request.map_folder.clone());
-    if let Some(err) = deps.error {
-        return BundleResult {
+    println!("Bundling map: {}", map_name);
+    
+    // Phase 1: Collect initial dependencies from map files
+    emit_progress(&progress_cb, "Phase 1: Collecting map files", 0.05);
+    let initial_deps = match phase1_collection::collect_all_dependencies(map_path) {
+        Ok(deps) => deps,
+        Err(e) => return BundleResult {
             success: false,
             output_path: None,
-            error: Some(format!("Failed to extract dependencies: {}", err)),
-        };
-    }
-    emit_progress(&progress_cb, "Dependencies extracted", 0.1);
+            error: Some(format!("Phase 1 failed: {}", e)),
+        }
+    };
+    emit_progress(&progress_cb, format!("Phase 1 complete: {} files found", initial_deps.len()).as_str(), 0.1);
     
     // Create temp folder
     let temp_dir = std::env::temp_dir().join(format!("omsi_bundle_{}", map_name));
@@ -66,41 +66,18 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         };
     }
     
-    println!("Created temp folder: {:?}", temp_dir);
+    // Phase 2: Process dependencies recursively
+    emit_progress(&progress_cb, "Phase 2: Processing dependencies", 0.15);
+    let all_deps = phase2_processing::process_dependencies(initial_deps, omsi_root);
     
-    // Extract nested dependencies for humans
-    println!("Extracting nested dependencies for humans...");
-    let human_deps = dependencies::extract_nested_dependencies(&deps.humans, "human", omsi_root);
-    println!("Found {} nested human dependencies", human_deps.len());
-    
-    // Extract nested dependencies for sceneryobjects
-    println!("Extracting nested dependencies for sceneryobjects...");
-    let sceneryobject_deps = dependencies::extract_nested_dependencies(&deps.sceneryobjects, "sceneryobject", omsi_root);
-    println!("Found {} nested sceneryobject dependencies", sceneryobject_deps.len());
-    
-    // Extract nested dependencies for splines
-    println!("Extracting nested dependencies for splines...");
-    let spline_deps = dependencies::extract_nested_dependencies(&deps.splines, "spline", omsi_root);
-    println!("Found {} nested spline dependencies", spline_deps.len());
-    
-    // Extract nested dependencies for vehicles (trains)
-    println!("Extracting nested dependencies for vehicles...");
-    let vehicle_deps = dependencies::extract_nested_dependencies(&deps.vehicles, "vehicle", omsi_root);
-    println!("Found {} nested vehicle dependencies", vehicle_deps.len());
-    emit_progress(&progress_cb, "Resolving nested dependencies", 0.25);
+    println!("Resolved {} total dependencies", all_deps.len());
+    emit_progress(&progress_cb, format!("Phase 2 complete: {} total files", all_deps.len()).as_str(), 0.25);
     
     // Separate folders from files
     let mut folders_to_copy = HashSet::new();
     let mut files_to_copy = HashSet::new();
     
-    for dep in sceneryobject_deps.iter()
-        .chain(spline_deps.iter())
-        .chain(human_deps.iter())
-        .chain(vehicle_deps.iter())
-        .chain(deps.textures.iter())
-        .chain(deps.money_systems.iter())
-        .chain(deps.ticket_packs.iter()) {
-        
+    for dep in &all_deps {
         if dep.starts_with("FOLDER:") {
             // This is a folder marker - extract the actual path
             let folder_path = dep.strip_prefix("FOLDER:").unwrap();
@@ -108,21 +85,6 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         } else {
             files_to_copy.insert(dep.clone());
         }
-    }
-
-    // Ensure money systems and ticket packs copy their whole folder
-    for money_path in &deps.money_systems {
-        if let Some(parent) = Path::new(money_path).parent() {
-            folders_to_copy.insert(parent.to_string_lossy().to_string());
-        }
-        files_to_copy.insert(money_path.clone());
-    }
-
-    for ticket_path in &deps.ticket_packs {
-        if let Some(parent) = Path::new(ticket_path).parent() {
-            folders_to_copy.insert(parent.to_string_lossy().to_string());
-        }
-        files_to_copy.insert(ticket_path.clone());
     }
     
     // Copy all files with progress
@@ -133,33 +95,37 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         let src = omsi_root.join(file_path);
         let dest = temp_dir.join(file_path);
         
-        if let Err(e) = copy_file_with_folders(&src, &dest) {
-            failed_files.push(format!("{}: {}", file_path, e));
+        // Only attempt copy if source exists
+        if src.exists() {
+            if let Err(e) = copy_file_with_folders(&src, &dest) {
+                failed_files.push(format!("{}: {}", file_path, e));
+            } else {
+                copied_files += 1;
+            }
         } else {
-            copied_files += 1;
+            // println!("Missing file: {}", file_path);
         }
 
-        if copied_files % 25 == 0 || copied_files == files_to_copy.len() {
+        if copied_files % 50 == 0 || copied_files == files_to_copy.len() {
             let pct = 0.25 + 0.55 * (copied_files as f32 / total_files as f32);
             emit_progress(&progress_cb, "Copying files", pct);
         }
     }
     
+    if total_files > 0 {
+        println!("Copied {} files", copied_files);
+    }
+    
     // Copy all folders with progress
     let mut copied_folders = 0;
     let total_folders = folders_to_copy.len().max(1);
-    println!("Preparing to copy {} vehicle folders...", folders_to_copy.len());
     for folder_path in &folders_to_copy {
-        println!("  Copying vehicle folder: {}", folder_path);
         let src = omsi_root.join(folder_path);
         let dest = temp_dir.join(folder_path);
         
         if src.exists() {
             if let Ok(_) = copy_dir_all(&src, &dest) {
                 copied_folders += 1;
-                println!("Copied vehicle folder: {}", folder_path);
-            } else {
-                println!("Warning: Failed to copy vehicle folder: {}", folder_path);
             }
         }
 
@@ -169,17 +135,8 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         }
     }
     
-    println!("Copied {} files and {} folders successfully", copied_files, copied_folders);
-    if !failed_files.is_empty() {
-        println!("Warning: {} optional files were not found (this is usually normal):", failed_files.len());
-        for (idx, failed) in failed_files.iter().enumerate() {
-            if idx < 5 {
-                println!("  - {}", failed);
-            }
-        }
-        if failed_files.len() > 5 {
-            println!("  ... and {} more", failed_files.len() - 5);
-        }
+    if total_folders > 0 {
+        println!("Copied {} folders", copied_folders);
     }
     
     // Copy entire map folder to temp/maps/mapname
@@ -193,7 +150,6 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         };
     }
     
-    println!("Copied map folder to temp");
     emit_progress(&progress_cb, "Copied map folder", 0.92);
     
     // Copy README if specified
@@ -202,7 +158,6 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         if readme_src.exists() {
             let readme_dest = temp_dir.join(readme_src.file_name().unwrap_or_default());
             let _ = fs::copy(readme_src, readme_dest);
-            println!("Copied README");
         }
     }
     
@@ -229,10 +184,7 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
         .to_lowercase();
     let compression_level = request.compression_level.unwrap_or(1);
 
-    println!(
-        "Creating ZIP: {:?} (method: {}, level: {})",
-        output_path, compression_method, compression_level
-    );
+    println!("Creating ZIP file...");
     emit_progress(&progress_cb, "Creating ZIP", 0.94);
     
     // Create ZIP file
@@ -241,6 +193,8 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
             // Clean up temp folder
             let _ = fs::remove_dir_all(&temp_dir);
             emit_progress(&progress_cb, "Finished", 1.0);
+            
+            println!("Bundle created: {}", output_path.display());
             
             BundleResult {
                 success: true,

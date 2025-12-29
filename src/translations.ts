@@ -56,6 +56,12 @@ export const translations: Record<string, Record<string, string>> = {
     changelog_v1_0_1_item2:
       "Fixed: Texture loading from global.cfg (second texture was not always loaded)",
     changelog_v1_0_1_item3: "Added: Debug logging options for developers",
+    changelog_v1_1_0_item1:
+      "Major rewrite of the extraction system: The core logic has been rebuilt to be much more thorough and reliable.",
+    changelog_v1_1_0_item2:
+      "Enhanced compatibility: Better support for complex objects, binary meshes, and various file encodings.",
+    changelog_v1_1_0_item3:
+      "Bug fixes: Resolved critical issues with case-sensitivity and missing dependencies.",
   },
   cs: {
     mapFolder: "Složka s Mapou",
@@ -112,6 +118,12 @@ export const translations: Record<string, Record<string, string>> = {
     changelog_v1_0_1_item2:
       "Opraveno: Načítání textur z global.cfg (druhá textura se ne vždy načetla)",
     changelog_v1_0_1_item3: "Přidáno: Debug logování pro vývojáře",
+    changelog_v1_1_0_item1:
+      "Kompletní přepsání systému extrakce: Jádro aplikace bylo přepracováno pro mnohem důkladnější a spolehlivější hledání souborů.",
+    changelog_v1_1_0_item2:
+      "Vylepšená kompatibilita: Lepší podpora pro komplexní objekty, binární meshe a různá kódování souborů.",
+    changelog_v1_1_0_item3:
+      "Opravy chyb: Vyřešeny kritické problémy s velikostí písmen a chybějícími závislostmi.",
   },
   de: {
     mapFolder: "Karten-Ordner",
@@ -170,5 +182,11 @@ export const translations: Record<string, Record<string, string>> = {
       "Behoben: Textur-Laden aus global.cfg (zweite Textur wurde nicht immer geladen)",
     changelog_v1_0_1_item3:
       "Hinzugefügt: Debug-Protokollierungsoptionen für Entwickler",
+    changelog_v1_1_0_item1:
+      "Umfassende Überarbeitung des Extraktionssystems: Die Kernlogik wurde für eine gründlichere und zuverlässigere Dateisuche neu aufgebaut.",
+    changelog_v1_1_0_item2:
+      "Verbesserte Kompatibilität: Bessere Unterstützung für komplexe Objekte, binäre Meshes und verschiedene Dateikodierungen.",
+    changelog_v1_1_0_item3:
+      "Fehlerbehebungen: Kritische Probleme mit Groß-/Kleinschreibung und fehlenden Abhängigkeiten behoben.",
   },
 };

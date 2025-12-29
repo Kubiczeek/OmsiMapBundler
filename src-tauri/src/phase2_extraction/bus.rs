@@ -1,22 +1,22 @@
 use std::path::Path;
 use std::collections::HashSet;
 
-/// Extract all dependencies from a .bus or .ovh file (vehicle configuration)
+/// Extract all dependencies from a .bus file (vehicle configuration)
 /// Returns a set with the vehicle folder path that needs to be copied entirely
-pub fn extract_vehicle_dependencies(vehicle_path: &str, omsi_root: &Path) -> Option<HashSet<String>> {
-    let full_vehicle_path = omsi_root.join(vehicle_path);
+pub fn extract_bus_dependencies(bus_path: &str, omsi_root: &Path) -> Option<HashSet<String>> {
+    let full_bus_path = omsi_root.join(bus_path);
     
-    if !full_vehicle_path.exists() {
-        println!("Vehicle file not found: {:?}", full_vehicle_path);
+    if !full_bus_path.exists() {
+        println!("Bus file not found: {:?}", full_bus_path);
         return None;
     }
     
     let mut dependencies = HashSet::new();
     
     // Get the parent folder of the vehicle file
-    let vehicle_file_path = Path::new(vehicle_path);
-    if let Some(vehicle_folder) = vehicle_file_path.parent() {
-        let folder_str = vehicle_folder.to_string_lossy().replace('/', "\\");
+    let bus_file_path = Path::new(bus_path);
+    if let Some(bus_folder) = bus_file_path.parent() {
+        let folder_str = bus_folder.to_string_lossy().replace('/', "\\");
         
         // Safety check: don't copy empty or root paths
         if !folder_str.is_empty() && folder_str != "\\" && folder_str != "/" && folder_str.contains("\\") {
@@ -25,7 +25,7 @@ pub fn extract_vehicle_dependencies(vehicle_path: &str, omsi_root: &Path) -> Opt
             dependencies.insert(format!("FOLDER:{}", folder_str));
             println!("  -> Will copy vehicle folder: {}", folder_str);
         } else {
-            println!("  -> Skipping invalid vehicle folder path: '{}' from: '{}'", folder_str, vehicle_path);
+            println!("  -> Skipping invalid vehicle folder path: '{}' from: '{}'", folder_str, bus_path);
         }
     }
     

@@ -1,17 +1,13 @@
 use std::path::Path;
-use std::fs::File;
-use std::io::Read;
 use std::collections::HashSet;
-use encoding_rs::WINDOWS_1252;
-use encoding_rs_io::DecodeReaderBytesBuilder;
+use crate::phase2_extraction::utils;
 
 /// Extract all dependencies from a .zug file (train configuration)
 /// Returns a set of vehicle folder paths that need to be copied entirely
-pub fn extract_train_dependencies(zug_path: &str, omsi_root: &Path) -> Option<HashSet<String>> {
+pub fn extract_zug_dependencies(zug_path: &str, omsi_root: &Path) -> Option<HashSet<String>> {
     let full_zug_path = omsi_root.join(zug_path);
     
     if !full_zug_path.exists() {
-        println!("Train file not found: {:?}", full_zug_path);
         return None;
     }
     
@@ -21,24 +17,9 @@ pub fn extract_train_dependencies(zug_path: &str, omsi_root: &Path) -> Option<Ha
     dependencies.insert(zug_path.to_string());
     
     // Read .zug file with Windows-1252 encoding
-    let zug_content = match File::open(&full_zug_path) {
-        Ok(file) => {
-            let mut decoder = DecodeReaderBytesBuilder::new()
-                .encoding(Some(WINDOWS_1252))
-                .build(file);
-            let mut content = String::new();
-            match decoder.read_to_string(&mut content) {
-                Ok(_) => content,
-                Err(e) => {
-                    println!("Failed to decode {}: {}", zug_path, e);
-                    return None;
-                }
-            }
-        }
-        Err(e) => {
-            println!("Failed to open {}: {}", zug_path, e);
-            return None;
-        }
+    let zug_content = match utils::read_file_windows1252(&full_zug_path) {
+        Some(content) => content,
+        None => return None,
     };
     
     // Parse .zug file - every other line starting from first is a vehicle path
@@ -60,9 +41,6 @@ pub fn extract_train_dependencies(zug_path: &str, omsi_root: &Path) -> Option<Ha
                     // Add the entire vehicle folder
                     // We'll use a special marker to indicate this is a folder, not a file
                     dependencies.insert(format!("FOLDER:{}", folder_str));
-                    println!("  -> Will copy vehicle folder: {}", folder_str);
-                } else {
-                    println!("  -> Skipping invalid vehicle folder path: '{}' from line: '{}'", folder_str, line);
                 }
             }
             
