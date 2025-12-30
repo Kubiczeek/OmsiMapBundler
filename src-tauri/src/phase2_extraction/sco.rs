@@ -396,6 +396,41 @@ pub fn extract_sco_dependencies(sco_path: &str, omsi_root: &Path) -> Option<Hash
                 }
             }
         }
+
+        // Extract stringvarname lists from [stringvarnamelist] sections
+        if section == "[stringvarnamelist]" {
+            // Next line is count, skip it
+            lines.next();
+            // Following line is the varlist path
+            if let Some(varlist_line) = lines.next() {
+                let varlist_file = varlist_line.trim();
+                let varlist_file_lower = varlist_file.to_lowercase();
+                if !varlist_file.is_empty() && varlist_file_lower.ends_with(".txt") {
+                    let abs_sco_folder = omsi_root.join(sco_folder);
+                    let abs_script_folder = abs_sco_folder.join("script");
+                    let abs_script_folder_cap = abs_sco_folder.join("Script");
+                    
+                    // Try to find in script/ folder first, then sco root
+                    let found_path = utils::find_file(&abs_script_folder, varlist_file)
+                        .or_else(|| utils::find_file(&abs_script_folder_cap, varlist_file))
+                        .or_else(|| utils::find_file(&abs_sco_folder, varlist_file));
+                    
+                    if let Some(abs_path) = found_path {
+                        if let Some(rel) = utils::make_relative_path(&abs_path, omsi_root) {
+                            dependencies.insert(rel);
+                        } else {
+                            eprintln!("WARNING: Could not strip prefix {:?} from {:?}. Fallback used.", omsi_root, abs_path);
+                            dependencies.insert(sco_folder.join(varlist_file).to_string_lossy().replace('/', "\\"));
+                        }
+                    } else {
+                        // Log missing
+                        log_missing_file(sco_path, "StringVarlist", varlist_file, &[abs_script_folder.clone(), abs_script_folder_cap.clone(), abs_sco_folder.clone()]);
+                        // Fallback
+                        dependencies.insert(sco_folder.join(varlist_file).to_string_lossy().replace('/', "\\"));
+                    }
+                }
+            }
+        }
         
         // Extract sound configs from [sound] sections
         if section == "[sound]" {
