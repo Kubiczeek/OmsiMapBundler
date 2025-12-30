@@ -13,26 +13,6 @@ pub fn copy_file_with_folders(src: &Path, dest: &Path) -> std::io::Result<()> {
     Ok(())
 }
 
-// Helper function to copy entire directory recursively
-pub fn copy_dir_all(src: &Path, dest: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dest)?;
-    
-    for entry in fs::read_dir(src)? {
-        let entry = entry?;
-        let file_type = entry.file_type()?;
-        let src_path = entry.path();
-        let dest_path = dest.join(entry.file_name());
-        
-        if file_type.is_dir() {
-            copy_dir_all(&src_path, &dest_path)?;
-        } else {
-            fs::copy(&src_path, &dest_path)?;
-        }
-    }
-    
-    Ok(())
-}
-
 // Helper function to create ZIP from directory with configurable compression
 pub fn create_zip(
     src_dir: &Path,

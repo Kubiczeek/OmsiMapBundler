@@ -62,6 +62,8 @@ export const translations: Record<string, Record<string, string>> = {
       "Enhanced compatibility: Better support for complex objects, binary meshes, and various file encodings.",
     changelog_v1_1_0_item3:
       "Bug fixes: Resolved critical issues with case-sensitivity and missing dependencies.",
+    changelog_v1_1_0_item4:
+      "Performance: Added multithreading to dependency extraction for faster processing.",
   },
   cs: {
     mapFolder: "Složka s Mapou",
@@ -124,6 +126,8 @@ export const translations: Record<string, Record<string, string>> = {
       "Vylepšená kompatibilita: Lepší podpora pro komplexní objekty, binární meshe a různá kódování souborů.",
     changelog_v1_1_0_item3:
       "Opravy chyb: Vyřešeny kritické problémy s velikostí písmen a chybějícími závislostmi.",
+    changelog_v1_1_0_item4:
+      "Výkon: Přidáno vícevláknové zpracování extrakce závislostí pro rychlejší běh.",
   },
   de: {
     mapFolder: "Karten-Ordner",
@@ -188,5 +192,7 @@ export const translations: Record<string, Record<string, string>> = {
       "Verbesserte Kompatibilität: Bessere Unterstützung für komplexe Objekte, binäre Meshes und verschiedene Dateikodierungen.",
     changelog_v1_1_0_item3:
       "Fehlerbehebungen: Kritische Probleme mit Groß-/Kleinschreibung und fehlenden Abhängigkeiten behoben.",
+    changelog_v1_1_0_item4:
+      "Leistung: Multithreading zur Abhängigkeitsextraktion für schnellere Verarbeitung hinzugefügt.",
   },
 };

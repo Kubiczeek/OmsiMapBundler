@@ -1,10 +1,11 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::Read;
 use std::collections::HashSet;
 use encoding_rs::UTF_16LE;
 use encoding_rs_io::DecodeReaderBytesBuilder;
+use rayon::prelude::*;
 
 
 /// Debug mode - set to true to log all collected paths to file
@@ -48,24 +49,36 @@ pub fn collect_all_dependencies(map_folder: &Path) -> Result<HashSet<String>, Bo
         collect_from_text_file(&drivers_txt, &mut all_paths)?;
     }
 
+    // Scan any other .txt files in map folder recursively (excluding the ones already processed)
+    // Collect all txt files first
+    let txt_files: Vec<PathBuf> = walkdir::WalkDir::new(map_folder)
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|e| e.path().is_file())
+        .filter(|e| e.path().extension().and_then(|s| s.to_str()).map(|s| s.eq_ignore_ascii_case("txt")).unwrap_or(false))
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    // Process txt files in parallel
+    let txt_results: Vec<HashSet<String>> = txt_files.par_iter()
+        .map(|p| {
+            let mut local_paths = HashSet::new();
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
+            if name != "parklist_p.txt" && name != "humans.txt" && name != "drivers.txt" && name != "debug_collected_paths.txt" {
+                let _ = collect_from_text_file(&p, &mut local_paths);
+            }
+            local_paths
+        })
+        .collect();
+
+    // Merge results
+    for res in txt_results {
+        all_paths.extend(res);
+    }
+
     // Debug: Log all collected paths
     if DEBUG {
         log_to_file(&all_paths, map_folder)?;
-    }
-
-    // Scan any other .txt files in map folder recursively (excluding the ones already processed)
-    for entry in walkdir::WalkDir::new(map_folder).into_iter().filter_map(Result::ok) {
-        let p = entry.path().to_path_buf();
-        if p.is_file() {
-            if let Some(ext) = p.extension().and_then(|e| e.to_str()) {
-                if ext.eq_ignore_ascii_case("txt") {
-                    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("").to_lowercase();
-                    if name != "parklist_p.txt" && name != "humans.txt" && name != "drivers.txt" && name != "debug_collected_paths.txt" {
-                        let _ = collect_from_text_file(&p, &mut all_paths);
-                    }
-                }
-            }
-        }
     }
 
     Ok(all_paths)
@@ -79,13 +92,17 @@ fn collect_from_map_tiles(
     map_folder: &Path,
     all_paths: &mut HashSet<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Collect from regular .map files
-    for entry in fs::read_dir(map_folder)? {
-        let entry = entry?;
-        let path = entry.path();
+    let mut map_files = Vec::new();
 
-        if path.extension().and_then(|s| s.to_str()) == Some("map") {
-            collect_from_single_map_file(&path, all_paths)?;
+    // Collect from regular .map files
+    if let Ok(entries) = fs::read_dir(map_folder) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("map") {
+                    map_files.push(path);
+                }
+            }
         }
     }
 
@@ -97,8 +114,27 @@ fn collect_from_map_tiles(
             .filter_map(Result::ok)
         {
             if entry.path().extension().and_then(|s| s.to_str()) == Some("map") {
-                collect_from_single_map_file(entry.path(), all_paths)?;
+                map_files.push(entry.path().to_path_buf());
             }
+        }
+    }
+
+    // Process map files in parallel
+    let results: Vec<Result<HashSet<String>, String>> = map_files.par_iter()
+        .map(|path| {
+            let mut local_paths = HashSet::new();
+            match collect_from_single_map_file(path, &mut local_paths) {
+                Ok(_) => Ok(local_paths),
+                Err(e) => Err(format!("Error processing {:?}: {}", path, e))
+            }
+        })
+        .collect();
+
+    // Merge results
+    for res in results {
+        match res {
+            Ok(paths) => all_paths.extend(paths),
+            Err(e) => eprintln!("{}", e), // Log error but continue
         }
     }
 

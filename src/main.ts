@@ -148,7 +148,7 @@ bundleBtn?.addEventListener("click", async () => {
   try {
     bundleBtn.disabled = true;
     showStatus(translations[currentLang].validatingMap, "processing");
-    setProgress(0.02, translations[currentLang].processing);
+    // setProgress(0.02, translations[currentLang].processing);
 
     // Validate map folder
     const validation = await invoke<ValidationResult>("validate_map_folder", {
@@ -173,7 +173,7 @@ bundleBtn?.addEventListener("click", async () => {
     }
 
     showStatus(translations[currentLang].processing, "processing");
-    setProgress(0.08, translations[currentLang].processing);
+    // setProgress(0.08, translations[currentLang].processing);
 
     // Extract all dependencies
     console.log("Extracting dependencies from map folder...");

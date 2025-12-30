@@ -28,4 +28,5 @@ encoding_rs_io = "0.1"
 zip = "2.2"
 walkdir = "2"
 mtzip = "4.0.3"
+rayon = "1.11.0"
 
