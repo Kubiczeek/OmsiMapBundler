@@ -13,7 +13,7 @@
   <div class="app-header">
     <div class="title-container">
       <h1 class="app-title">OMSI Map Bundler</h1>
-      <span class="app-version" id="app-version" title="View Changelog">v1.1.0</span>
+      <span class="app-version" id="app-version" title="View Changelog">v1.1.1</span>
     </div>
     <div class="header-controls">
       <div class="language-switcher">
@@ -106,18 +106,34 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="readme-path" data-i18n="readmePath">README Path (Optional)</label>
-        <div class="input-group">
-          <input type="text" id="readme-path" readonly placeholder="Select README file..."
-            data-i18n-placeholder="selectReadme">
-          <button class="btn-secondary" id="select-readme">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-            </svg>
-            <span data-i18n="browse">Browse</span>
-          </button>
+      <div class="form-group two-cols">
+        <div class="form-col">
+          <label for="addon-folder" data-i18n="addonFolder">Addon Folder (Optional)</label>
+          <div class="input-group">
+            <input type="text" id="addon-folder" readonly placeholder="Select addon folder..."
+              data-i18n-placeholder="selectAddonFolder">
+            <button class="btn-secondary" id="select-addon-folder">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+              </svg>
+              <span data-i18n="browse">Browse</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="form-col">
+          <label for="readme-path" data-i18n="readmePath">README Path (Optional)</label>
+          <div class="input-group">
+            <input type="text" id="readme-path" readonly placeholder="Select README file..."
+              data-i18n-placeholder="selectReadme">
+            <button class="btn-secondary" id="select-readme">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              <span data-i18n="browse">Browse</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -190,7 +206,7 @@
 
   <footer class="app-footer">
     <p>
-      OmsiMapBundler © 2025 Created by <strong>Kubiczeek</strong>
+      OmsiMapBundler © 2026 Created by <strong>Kubiczeek</strong>
       •
       <a href="https://github.com/Kubiczeek" target="_blank" rel="noopener noreferrer" class="github-link">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -257,6 +273,15 @@
       </button>
       <h2 data-i18n="changelogTitle">Changelog</h2>
       <div class="modal-body">
+        <div class="changelog-entry">
+          <h3>v1.1.1</h3>
+          <ul>
+            <li data-i18n="changelog_v1_1_1_item4">New Feature: Added support for including an Addon folder</li>
+            <li data-i18n="changelog_v1_1_1_item1">Fixed: Complete map folder copy (including global.cfg)</li>
+            <li data-i18n="changelog_v1_1_1_item2">Fixed: Spline texture extraction with folder paths</li>
+            <li data-i18n="changelog_v1_1_1_item3">Fixed: Parsing of .sco files with inline comments</li>
+          </ul>
+        </div>
         <div class="changelog-entry">
           <h3>v1.1.0</h3>
           <ul>

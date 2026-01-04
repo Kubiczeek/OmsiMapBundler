@@ -31,20 +31,42 @@ pub fn extract_sli_dependencies(sli_path: &str, omsi_root: &Path) -> Option<Hash
         // Extract textures from [texture] sections
         if trimmed == "[texture]" {
             if let Some(tex_line) = lines.next() {
-                let tex_file = tex_line.trim();
-                if !tex_file.is_empty() && (tex_file.ends_with(".jpg") || 
-                    tex_file.ends_with(".bmp") || tex_file.ends_with(".dds") || 
-                    tex_file.ends_with(".png") || tex_file.ends_with(".tga")) {
+                let tex_file_raw = tex_line.trim();
+                // Handle comments
+                let tex_file = tex_file_raw.split(&[';', '#'][..]).next().unwrap_or("").trim();
+                let tex_file_lower = tex_file.to_lowercase();
+                
+                if !tex_file.is_empty() && (tex_file_lower.ends_with(".jpg") || 
+                    tex_file_lower.ends_with(".bmp") || tex_file_lower.ends_with(".dds") || 
+                    tex_file_lower.ends_with(".png") || tex_file_lower.ends_with(".tga")) {
                     
-                    // Get base name without extension
-                    let base_name = if let Some(pos) = tex_file.rfind('.') {
-                        &tex_file[..pos]
+                    // Check if it's a path with separators
+                    if tex_file.contains('\\') || tex_file.contains('/') {
+                        let path_obj = Path::new(tex_file);
+                        let file_name = path_obj.file_name().unwrap().to_str().unwrap();
+                        let dir_path = path_obj.parent().unwrap();
+                        
+                        let base_name_no_ext = if let Some(pos) = file_name.rfind('.') {
+                            &file_name[..pos]
+                        } else {
+                            file_name
+                        };
+
+                        // 1. Try as path relative to OMSI root
+                        utils::add_texture_variants(base_name_no_ext, dir_path, omsi_root, &mut dependencies);
+                        
+                        // 2. Try as path relative to SLI folder
+                        let rel_dir = sli_folder.join(dir_path);
+                        utils::add_texture_variants(base_name_no_ext, &rel_dir, omsi_root, &mut dependencies);
                     } else {
-                        tex_file
-                    };
-                    
-                    // Find all texture variants (different extensions, night folder, etc.)
-                    utils::add_texture_variants(base_name, &sli_folder, omsi_root, &mut dependencies);
+                        // Standard behavior
+                        let base_name = if let Some(pos) = tex_file.rfind('.') {
+                            &tex_file[..pos]
+                        } else {
+                            tex_file
+                        };
+                        utils::add_texture_variants(base_name, &sli_folder, omsi_root, &mut dependencies);
+                    }
                 }
             }
         }

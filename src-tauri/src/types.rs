@@ -23,6 +23,7 @@ pub struct DependencyResult {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BundleRequest {
     pub map_folder: String,
+    pub addon_folder: Option<String>,
     pub output_folder: Option<String>,
     pub zip_name: Option<String>,
     pub readme_path: Option<String>,

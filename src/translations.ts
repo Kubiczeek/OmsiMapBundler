@@ -3,12 +3,14 @@
 export const translations: Record<string, Record<string, string>> = {
   en: {
     mapFolder: "Map Folder",
+    addonFolder: "Addon Folder (Optional)",
     readmePath: "README Path (Optional)",
     outputFolder: "Output Folder (Optional)",
     zipName: "ZIP Name (Optional)",
     browse: "Browse",
     createBundle: "Create Bundle",
     selectMapFolder: "Select map folder...",
+    selectAddonFolder: "Select addon folder...",
     selectReadme: "Select README file...",
     selectOutput: "Select output folder...",
     zipNamePlaceholder: "my-map-bundle",
@@ -64,15 +66,24 @@ export const translations: Record<string, Record<string, string>> = {
       "Bug fixes: Resolved critical issues with case-sensitivity and missing dependencies.",
     changelog_v1_1_0_item4:
       "Performance: Added multithreading to dependency extraction for faster processing.",
+    changelog_v1_1_1_item1:
+      "Fixed: Complete map folder copy (including global.cfg)",
+    changelog_v1_1_1_item2:
+      "Fixed: Spline texture extraction with folder paths",
+    changelog_v1_1_1_item3: "Fixed: Parsing of .sco files with inline comments",
+    changelog_v1_1_1_item4:
+      "New Feature: Added support for including an Addon folder",
   },
   cs: {
     mapFolder: "Složka s Mapou",
+    addonFolder: "Složka s Addonem (Volitelné)",
     readmePath: "Cesta k README (Volitelné)",
     outputFolder: "Výstupní Složka (Volitelné)",
     zipName: "Název ZIP (Volitelné)",
     browse: "Procházet",
     createBundle: "Vytvořit Balíček",
     selectMapFolder: "Vyberte složku s mapou...",
+    selectAddonFolder: "Vyberte složku s addonem...",
     selectReadme: "Vyberte README soubor...",
     selectOutput: "Vyberte výstupní složku...",
     zipNamePlaceholder: "muj-balik-mapy",
@@ -128,15 +139,25 @@ export const translations: Record<string, Record<string, string>> = {
       "Opravy chyb: Vyřešeny kritické problémy s velikostí písmen a chybějícími závislostmi.",
     changelog_v1_1_0_item4:
       "Výkon: Přidáno vícevláknové zpracování extrakce závislostí pro rychlejší běh.",
+    changelog_v1_1_1_item1:
+      "Opraveno: Kopírování kompletní složky mapy (včetně global.cfg)",
+    changelog_v1_1_1_item2:
+      "Opraveno: Extrakce textur u splin s cestami ve složkách",
+    changelog_v1_1_1_item3:
+      "Opraveno: Načítání .sco souborů s inline komentáři",
+    changelog_v1_1_1_item4:
+      "Nová funkce: Přidána podpora pro zahrnutí složky Addon",
   },
   de: {
     mapFolder: "Karten-Ordner",
+    addonFolder: "Addon-Ordner (Optional)",
     readmePath: "README-Pfad (Optional)",
     outputFolder: "Ausgabeordner (Optional)",
     zipName: "ZIP-Name (Optional)",
     browse: "Durchsuchen",
     createBundle: "Paket Erstellen",
     selectMapFolder: "Kartenordner auswählen...",
+    selectAddonFolder: "Addon-Ordner auswählen...",
     selectReadme: "README-Datei auswählen...",
     selectOutput: "Ausgabeordner auswählen...",
     zipNamePlaceholder: "mein-karten-paket",
@@ -194,5 +215,13 @@ export const translations: Record<string, Record<string, string>> = {
       "Fehlerbehebungen: Kritische Probleme mit Groß-/Kleinschreibung und fehlenden Abhängigkeiten behoben.",
     changelog_v1_1_0_item4:
       "Leistung: Multithreading zur Abhängigkeitsextraktion für schnellere Verarbeitung hinzugefügt.",
+    changelog_v1_1_1_item1:
+      "Behoben: Vollständiges Kopieren des Kartenordners (einschließlich global.cfg)",
+    changelog_v1_1_1_item2:
+      "Behoben: Textur-Extraktion bei Splines mit Ordnerpfaden",
+    changelog_v1_1_1_item3:
+      "Behoben: Parsen von .sco-Dateien mit Inline-Kommentaren",
+    changelog_v1_1_1_item4:
+      "Neue Funktion: Unterstützung für das Einbinden eines Addon-Ordners hinzugefügt",
   },
 };

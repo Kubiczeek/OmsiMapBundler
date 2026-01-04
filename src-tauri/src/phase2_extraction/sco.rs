@@ -435,7 +435,8 @@ pub fn extract_sco_dependencies(sco_path: &str, omsi_root: &Path) -> Option<Hash
         // Extract sound configs from [sound] sections
         if section == "[sound]" {
             if let Some(sound_line) = lines.next() {
-                let sound_file = sound_line.trim();
+                let sound_file_raw = sound_line.trim();
+                let sound_file = sound_file_raw.split(&[';', '#'][..]).next().unwrap_or("").trim();
                 let sound_file_lower = sound_file.to_lowercase();
                 if !sound_file.is_empty() && sound_file_lower.ends_with(".cfg") {
                     let abs_sco_folder = omsi_root.join(sco_folder);
@@ -470,7 +471,8 @@ pub fn extract_sco_dependencies(sco_path: &str, omsi_root: &Path) -> Option<Hash
         // Extract passenger cabin configs from [passengercabin] sections
         if section == "[passengercabin]" {
             if let Some(cabin_line) = lines.next() {
-                let cabin_file = cabin_line.trim();
+                let cabin_file_raw = cabin_line.trim();
+                let cabin_file = cabin_file_raw.split(&[';', '#'][..]).next().unwrap_or("").trim();
                 let cabin_file_lower = cabin_file.to_lowercase();
                 if !cabin_file.is_empty() && cabin_file_lower.ends_with(".cfg") {
                     let abs_sco_folder = omsi_root.join(sco_folder);

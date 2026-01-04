@@ -13,12 +13,16 @@ let currentLang = "en";
 
 // State
 let mapFolderPath = "";
+let addonFolderPath = "";
 let readmePath = "";
 let outputFolderPath = "";
 
 // Elements
 const mapFolderInput = document.getElementById(
   "map-folder"
+) as HTMLInputElement;
+const addonFolderInput = document.getElementById(
+  "addon-folder"
 ) as HTMLInputElement;
 const readmeInput = document.getElementById("readme-path") as HTMLInputElement;
 const outputFolderInput = document.getElementById(
@@ -98,6 +102,22 @@ document
     if (selected && typeof selected === "string") {
       mapFolderPath = selected;
       mapFolderInput.value = selected;
+    }
+  });
+
+// Select Addon Folder
+document
+  .getElementById("select-addon-folder")
+  ?.addEventListener("click", async () => {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: translations[currentLang].selectAddonFolder,
+    });
+
+    if (selected && typeof selected === "string") {
+      addonFolderPath = selected;
+      addonFolderInput.value = selected;
     }
   });
 
@@ -214,6 +234,7 @@ bundleBtn?.addEventListener("click", async () => {
     // Call create_bundle API
     const bundleRequest: BundleRequest = {
       map_folder: mapFolderPath,
+      addon_folder: addonFolderPath || undefined,
       readme_path: readmePath || undefined,
       output_folder: outputFolderPath || undefined,
       zip_name: zipNameInput.value || undefined,

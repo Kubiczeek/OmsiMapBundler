@@ -20,6 +20,7 @@ export interface DependencyResult {
 
 export interface BundleRequest {
   map_folder: string;
+  addon_folder?: string;
   output_folder?: string;
   zip_name?: string;
   readme_path?: string;

@@ -79,6 +79,19 @@ pub fn create_bundle(request: BundleRequest, progress_cb: Option<Arc<ProgressCal
     let mut files_to_copy = HashSet::new();
     let mut folders_to_process = Vec::new();
     
+    // Explicitly add the map folder to ensure all its content is copied
+    if let Ok(map_rel_path) = map_path.strip_prefix(omsi_root) {
+        folders_to_process.push(map_rel_path.to_string_lossy().replace("\\", "/"));
+    }
+
+    // Explicitly add the addon folder if specified
+    if let Some(addon_folder) = &request.addon_folder {
+        let addon_path = Path::new(addon_folder);
+        if let Ok(addon_rel_path) = addon_path.strip_prefix(omsi_root) {
+            folders_to_process.push(addon_rel_path.to_string_lossy().replace("\\", "/"));
+        }
+    }
+    
     for dep in &all_deps {
         if dep.starts_with("FOLDER:") {
             let folder_path = dep.strip_prefix("FOLDER:").unwrap();
