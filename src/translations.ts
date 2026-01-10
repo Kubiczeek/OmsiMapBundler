@@ -73,6 +73,12 @@ export const translations: Record<string, Record<string, string>> = {
     changelog_v1_1_1_item3: "Fixed: Parsing of .sco files with inline comments",
     changelog_v1_1_1_item4:
       "New Feature: Added support for including an Addon folder",
+    changelog_v1_1_2_item1:
+      "Fixed: Robust file encoding support - files with Windows-1252, ISO-8859-1, and other encodings are now properly handled",
+    changelog_v1_1_2_item2:
+      'Fixed: "stream did not contain valid UTF-8" error that occurred with older OMSI maps',
+    changelog_v1_1_2_item3:
+      "Enhanced: Improved compatibility with legacy map files and special characters",
   },
   cs: {
     mapFolder: "Složka s Mapou",
@@ -147,6 +153,12 @@ export const translations: Record<string, Record<string, string>> = {
       "Opraveno: Načítání .sco souborů s inline komentáři",
     changelog_v1_1_1_item4:
       "Nová funkce: Přidána podpora pro zahrnutí složky Addon",
+    changelog_v1_1_2_item1:
+      "Opraveno: Robustní podpora kódování souborů - soubory s kódováním Windows-1252, ISO-8859-1 a dalšími jsou nyní správně zpracovány",
+    changelog_v1_1_2_item2:
+      'Opraveno: Chyba "stream did not contain valid UTF-8", která se vyskytovala u starších OMSI map',
+    changelog_v1_1_2_item3:
+      "Vylepšeno: Zlepšená kompatibilita se staršími mapovými soubory a speciálními znaky",
   },
   de: {
     mapFolder: "Karten-Ordner",
@@ -223,5 +235,11 @@ export const translations: Record<string, Record<string, string>> = {
       "Behoben: Parsen von .sco-Dateien mit Inline-Kommentaren",
     changelog_v1_1_1_item4:
       "Neue Funktion: Unterstützung für das Einbinden eines Addon-Ordners hinzugefügt",
+    changelog_v1_1_2_item1:
+      "Behoben: Robuste Dateicodierung-Unterstützung - Dateien mit Windows-1252, ISO-8859-1 und anderen Kodierungen werden jetzt korrekt verarbeitet",
+    changelog_v1_1_2_item2:
+      'Behoben: Fehler "stream did not contain valid UTF-8", der bei älteren OMSI-Karten auftrat',
+    changelog_v1_1_2_item3:
+      "Verbessert: Verbesserte Kompatibilität mit älteren Kartendateien und Sonderzeichen",
   },
 };

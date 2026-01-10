@@ -1,6 +1,5 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::fs::File;
 use std::io::Read;
 use std::collections::HashSet;
 use encoding_rs::UTF_16LE;
@@ -145,13 +144,30 @@ fn collect_from_single_map_file(
     map_file: &Path,
     all_paths: &mut HashSet<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Map files use UTF-16LE encoding
-    let file = File::open(map_file)?;
-    let mut decoder = DecodeReaderBytesBuilder::new()
-        .encoding(Some(UTF_16LE))
-        .build(file);
-    let mut content = String::new();
-    decoder.read_to_string(&mut content)?;
+    // Map files typically use UTF-16LE encoding, but we try robustly
+    let bytes = fs::read(map_file)?;
+    
+    let content = if bytes.starts_with(&[0xFF, 0xFE]) {
+        // UTF-16LE with BOM (most common for .map files)
+        let mut decoder = DecodeReaderBytesBuilder::new()
+            .encoding(Some(UTF_16LE))
+            .build(std::io::Cursor::new(&bytes));
+        let mut s = String::new();
+        match decoder.read_to_string(&mut s) {
+            Ok(_) => s,
+            Err(_) => {
+                // Fallback to lossy decoding
+                let (cow, _, _) = encoding_rs::WINDOWS_1252.decode(&bytes);
+                cow.into_owned()
+            }
+        }
+    } else if let Ok(s) = String::from_utf8(bytes.clone()) {
+        s
+    } else {
+        // Fallback to Windows-1252
+        let (cow, _, _) = encoding_rs::WINDOWS_1252.decode(&bytes);
+        cow.into_owned()
+    };
     
     let mut lines = content.lines().peekable();
 
@@ -191,13 +207,30 @@ fn collect_from_global_cfg(
     global_cfg: &Path,
     all_paths: &mut HashSet<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // global.cfg uses UTF-16LE encoding
-    let file = File::open(global_cfg)?;
-    let mut decoder = DecodeReaderBytesBuilder::new()
-        .encoding(Some(UTF_16LE))
-        .build(file);
-    let mut content = String::new();
-    decoder.read_to_string(&mut content)?;
+    // global.cfg typically uses UTF-16LE encoding, but we try robustly
+    let bytes = fs::read(global_cfg)?;
+    
+    let content = if bytes.starts_with(&[0xFF, 0xFE]) {
+        // UTF-16LE with BOM (most common for global.cfg)
+        let mut decoder = DecodeReaderBytesBuilder::new()
+            .encoding(Some(UTF_16LE))
+            .build(std::io::Cursor::new(&bytes));
+        let mut s = String::new();
+        match decoder.read_to_string(&mut s) {
+            Ok(_) => s,
+            Err(_) => {
+                // Fallback to lossy decoding
+                let (cow, _, _) = encoding_rs::WINDOWS_1252.decode(&bytes);
+                cow.into_owned()
+            }
+        }
+    } else if let Ok(s) = String::from_utf8(bytes.clone()) {
+        s
+    } else {
+        // Fallback to Windows-1252
+        let (cow, _, _) = encoding_rs::WINDOWS_1252.decode(&bytes);
+        cow.into_owned()
+    };
     
     let mut lines = content.lines().peekable();
 
@@ -265,7 +298,7 @@ fn collect_from_ailists_cfg(
     ailists_cfg: &Path,
     all_paths: &mut HashSet<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(ailists_cfg)?;
+    let content = read_file_robust(ailists_cfg)?;
     let mut lines = content.lines().peekable();
     let mut in_depot_typgroup = false;
 
@@ -306,7 +339,7 @@ fn collect_from_parklist(
     parklist: &Path,
     all_paths: &mut HashSet<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let content = fs::read_to_string(parklist)?;
+    let content = read_file_robust(parklist)?;
 
     for line in content.lines() {
         let trimmed = line.trim();
@@ -330,12 +363,9 @@ fn collect_from_parklist(
     Ok(())
 }
 
-fn collect_from_text_file(
-    text_file: &Path,
-    all_paths: &mut HashSet<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // Read bytes and decode robustly: try UTF-8, then UTF-16LE BOM, then Windows-1252
-    let bytes = fs::read(text_file)?;
+/// Robustly read a file with various encodings: UTF-8, UTF-16LE, Windows-1252
+fn read_file_robust(file_path: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let bytes = fs::read(file_path)?;
 
     let content = if bytes.starts_with(&[0xFF, 0xFE]) {
         // UTF-16LE with BOM
@@ -353,6 +383,14 @@ fn collect_from_text_file(
         cow.into_owned()
     };
 
+    Ok(content)
+}
+
+fn collect_from_text_file(
+    text_file: &Path,
+    all_paths: &mut HashSet<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let content = read_file_robust(text_file)?;
     extract_paths_generic(&content, all_paths);
     Ok(())
 }

@@ -13,7 +13,7 @@
   <div class="app-header">
     <div class="title-container">
       <h1 class="app-title">OMSI Map Bundler</h1>
-      <span class="app-version" id="app-version" title="View Changelog">v1.1.1</span>
+      <span class="app-version" id="app-version" title="View Changelog">v1.1.2</span>
     </div>
     <div class="header-controls">
       <div class="language-switcher">
@@ -273,6 +273,14 @@
       </button>
       <h2 data-i18n="changelogTitle">Changelog</h2>
       <div class="modal-body">
+        <div class="changelog-entry">
+          <h3>v1.1.2</h3>
+          <ul>
+            <li data-i18n="changelog_v1_1_2_item1">Fixed: Robust file encoding support - files with Windows-1252, ISO-8859-1, and other encodings are now properly handled</li>
+            <li data-i18n="changelog_v1_1_2_item2">Fixed: "stream did not contain valid UTF-8" error that occurred with older OMSI maps</li>
+            <li data-i18n="changelog_v1_1_2_item3">Enhanced: Improved compatibility with legacy map files and special characters</li>
+          </ul>
+        </div>
         <div class="changelog-entry">
           <h3>v1.1.1</h3>
           <ul>

@@ -1,6 +1,5 @@
 use std::path::Path;
 use std::fs;
-use std::io::Read;
 use crate::phase2_extraction::utils;
 
 /// Extract texture references from .x (DirectX mesh) file
@@ -11,29 +10,24 @@ pub fn extract_x_textures(x_path: &str, omsi_root: &Path) -> Option<Vec<String>>
         return None;
     }
     
-    // Read text file (DirectX .x files can be text-based)
-    let mut file = match fs::File::open(&full_x_path) {
-        Ok(f) => f,
+    // Read file bytes first
+    let buffer = match fs::read(&full_x_path) {
+        Ok(b) => b,
         Err(_) => return None,
     };
     
-    let mut content = String::new();
-    if file.read_to_string(&mut content).is_err() {
-        // If text read fails, try binary mode
-        drop(file);
-        let mut file = match fs::File::open(&full_x_path) {
-            Ok(f) => f,
-            Err(_) => return None,
-        };
-        
-        let mut buffer = Vec::new();
-        if file.read_to_end(&mut buffer).is_err() {
-            return None;
+    // Try to decode as text (DirectX .x files can be text-based)
+    let content = if let Ok(s) = String::from_utf8(buffer.clone()) {
+        s
+    } else {
+        // Try Windows-1252 for legacy files
+        let (cow, _, had_errors) = encoding_rs::WINDOWS_1252.decode(&buffer);
+        if had_errors {
+            // If decoding fails, treat as binary
+            return utils::extract_textures_from_binary(&buffer);
         }
-        
-        // Try to find texture names in binary content
-        return utils::extract_textures_from_binary(&buffer);
-    }
+        cow.into_owned()
+    };
     
     // Parse text-based .x file for texture references
     let mut textures = Vec::new();
